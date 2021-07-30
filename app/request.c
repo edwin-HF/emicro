@@ -351,27 +351,27 @@ PHP_METHOD(emicro_request, header){
 
     call_user_function(NULL,NULL,&func_name,&headers,0,NULL);
 
-    zval *entry;
-    zend_array *array;
-	zend_string *string_key;
-	zend_string *new_key;
-
-    array_init(&array);
-
-    ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(&headers), string_key, entry) {
-        new_key = php_string_tolower(string_key);
-        zend_hash_add(array, new_key, entry);
-        zend_string_release_ex(new_key, 0);
-	} ZEND_HASH_FOREACH_END();
-
-
     if (key != NULL)
     {
+        zval *entry;
+        zend_array *array;
+        zend_string *string_key;
+        zend_string *new_key;
+
+        array_init(&array);
+
+        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARRVAL_P(&headers), string_key, entry) {
+            new_key = php_string_tolower(string_key);
+            zend_hash_add(array, new_key, entry);
+            zend_string_release_ex(new_key, 0);
+        } ZEND_HASH_FOREACH_END();
 
         zend_string *key2lower = php_string_tolower(zend_string_init(key,key_len,0));
 
         retval = zend_hash_str_find(array,key2lower->val,key_len);
+        
         zend_string_release(key2lower);
+        zend_array_destroy(array);
 
         if (retval)
         {
