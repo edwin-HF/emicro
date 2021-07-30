@@ -11,6 +11,9 @@
 
 zend_class_entry * emicro_request_ce;
 
+ZEND_BEGIN_ARG_INFO(arginfo_request_none, 0)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO(arginfo_request_get, 0)
     ZEND_ARG_INFO(0, key)
     ZEND_ARG_INFO(0, default)
@@ -90,6 +93,90 @@ PHP_METHOD(emicro_request, __construct){
 
 PHP_METHOD(emicro_request, __clone){
     ZEND_PARSE_PARAMETERS_NONE();
+}
+
+PHP_METHOD(emicro_request, isPost){
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    zval* method = queryParams(TRACK_VARS_SERVER,"REQUEST_METHOD");
+
+	if (strncasecmp("POST", ZSTR_VAL(Z_STR_P(method)), ZSTR_LEN(Z_STR_P(method))-1) == 0) { 
+		zend_string_free(method);
+		RETURN_TRUE; 
+	} 
+
+	zend_string_free(method);
+    RETURN_FALSE; 
+}
+
+PHP_METHOD(emicro_request, isGet){
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    zval* method = queryParams(TRACK_VARS_SERVER,"REQUEST_METHOD");
+
+	if (strncasecmp("GET", ZSTR_VAL(Z_STR_P(method)), ZSTR_LEN(Z_STR_P(method))-1) == 0) { 
+		zend_string_free(method);
+		RETURN_TRUE; 
+	} 
+
+	zend_string_free(method);
+    RETURN_FALSE; 
+}
+
+PHP_METHOD(emicro_request, isPut){
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    zval* method = queryParams(TRACK_VARS_SERVER,"REQUEST_METHOD");
+
+	if (strncasecmp("PUT", ZSTR_VAL(Z_STR_P(method)), ZSTR_LEN(Z_STR_P(method))-1) == 0) { 
+		zend_string_free(method);
+		RETURN_TRUE; 
+	} 
+
+	zend_string_free(method);
+    RETURN_FALSE; 
+}
+
+PHP_METHOD(emicro_request, isDelete){
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    zval* method = queryParams(TRACK_VARS_SERVER,"REQUEST_METHOD");
+
+	if (strncasecmp("DELETE", ZSTR_VAL(Z_STR_P(method)), ZSTR_LEN(Z_STR_P(method))-1) == 0) { 
+		zend_string_free(method);
+		RETURN_TRUE; 
+	} 
+
+	zend_string_free(method);
+    RETURN_FALSE; 
+}
+
+PHP_METHOD(emicro_request, isPatch){
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    zval* method = queryParams(TRACK_VARS_SERVER,"REQUEST_METHOD");
+
+	if (strncasecmp("PATCH", ZSTR_VAL(Z_STR_P(method)), ZSTR_LEN(Z_STR_P(method))-1) == 0) { 
+		zend_string_free(method);
+		RETURN_TRUE; 
+	} 
+
+	zend_string_free(method);
+    RETURN_FALSE; 
+}
+
+PHP_METHOD(emicro_request, isHead){
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    zval* method = queryParams(TRACK_VARS_SERVER,"REQUEST_METHOD");
+
+	if (strncasecmp("HEAD", ZSTR_VAL(Z_STR_P(method)), ZSTR_LEN(Z_STR_P(method))-1) == 0) { 
+		zend_string_free(method);
+		RETURN_TRUE; 
+	} 
+
+	zend_string_free(method);
+    RETURN_FALSE; 
 }
 
 PHP_METHOD(emicro_request, get){
@@ -301,8 +388,6 @@ PHP_METHOD(emicro_request, header){
 
 }
 
-
-
 zend_function_entry emicro_request_methods[] = {
 	PHP_ME(emicro_request, __construct, NULL, ZEND_ACC_PRIVATE)
 	PHP_ME(emicro_request, __clone, NULL, ZEND_ACC_PRIVATE)
@@ -313,6 +398,12 @@ zend_function_entry emicro_request_methods[] = {
     PHP_ME(emicro_request, cookie, arginfo_request_cookie, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_request, files, arginfo_request_files, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_request, header, arginfo_request_files, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_request, isPost, arginfo_request_none, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_request, isGet, arginfo_request_none, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_request, isPut, arginfo_request_none, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_request, isDelete, arginfo_request_none, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_request, isPatch, arginfo_request_none, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_request, isHead, arginfo_request_none, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_FE_END
 
 };
