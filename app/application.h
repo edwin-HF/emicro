@@ -5,6 +5,8 @@
 
 extern zend_class_entry * emicro_application_ce;
 
+int load(char *path);
+
 EMICRO_MODULE_D(application);
 
 #endif
