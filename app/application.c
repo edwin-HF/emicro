@@ -11,16 +11,20 @@
 
 zend_class_entry * emicro_application_ce;
 
-ZEND_BEGIN_ARG_INFO(arginfo_application_registerAutoloadDir, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_application_registerNamespace, 0)
     ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
-PHP_METHOD(emicro_application, registerAutoloadDir){
+PHP_METHOD(emicro_application, registerNamespace){
     
     zval* obj = getThis();
+    zval* params;
 
-    
+    ZEND_PARSE_PARAMETERS_START(1,1)
+        Z_PARAM_ARRAY(params);
+    ZEND_PARSE_PARAMETERS_END();
 
+    zend_update_property(emicro_application_ce,obj,ZEND_STRL(EMICRO_APPLICATION_NAMESPACE),params);
 
     RETURN_OBJ(obj);
 
@@ -58,6 +62,7 @@ PHP_METHOD(emicro_application, getInstance){
 
 PHP_METHOD(emicro_application, run){
 
+    zval* this = getThis();
     zval* router = dispatchParams(TRACK_VARS_GET,"s");
     char* str_router = Z_STRVAL_P(router);
     char* delimiter = "/";
@@ -84,14 +89,21 @@ PHP_METHOD(emicro_application, run){
         
     }
 
-    autoload(controller);
+    zval* namespace;
+
+    namespace = zend_read_property(emicro_application_ce,this,ZEND_STRL(EMICRO_APPLICATION_NAMESPACE),1,namespace);
+
+    autoload(controller, namespace);
 
     // autoload
     // php_printf("controller：%s\n",controller);
     // php_printf("method：%s\n",method);
 
+    char *nsController = emalloc(sizeof(controller) + 12);
+    php_sprintf(nsController,"controller\\%s",controller);
+
     zval controllerObj;
-	zend_string *c_key = zend_string_init(controller,strlen(controller), 0);
+	zend_string *c_key = zend_string_init(nsController,strlen(nsController), 0);
 	zend_class_entry *obj_ptr = zend_lookup_class(c_key);
 	zend_string_free(c_key);
 
@@ -111,22 +123,19 @@ zend_function_entry emicro_application_methods[] = {
     PHP_ME(emicro_application, __clone, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_application, getInstance, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_application, run, NULL, ZEND_ACC_PUBLIC)
-	PHP_ME(emicro_application, registerAutoloadDir, arginfo_application_registerAutoloadDir, ZEND_ACC_PUBLIC)
+	PHP_ME(emicro_application, registerNamespace, arginfo_application_registerNamespace, ZEND_ACC_PUBLIC)
     { NULL, NULL, NULL }
 
 };
 
-void autoload(char* class){
-
-    char* root;
-    char* loadClass = (char*)emalloc(sizeof(class));
-    strcpy(loadClass,class);
-    root = VCWD_GETCWD(root,MAXPATHLEN);
+char* app_path(){
 
     zval func_name;
     zval ret_replace;
     zval params[3];
     char* realpath;
+    char* root;
+    root = VCWD_GETCWD(root,MAXPATHLEN);
 
     ZVAL_STRING(&func_name, "str_replace");
     ZVAL_STRING(&params[0], "public");
@@ -134,19 +143,41 @@ void autoload(char* class){
     ZVAL_STRING(&params[2], root);
 
     call_user_function(NULL,NULL,&func_name,&ret_replace,3,params);
-    realpath = Z_STRVAL(ret_replace);
+    return Z_STRVAL(ret_replace);
 
-    char* controllerDir = strcat(realpath,"/controller/");
-    char* controllerPath = strcat(controllerDir,strcat(loadClass,".php"));
+}
 
-    load(controllerPath);
+char* public_path(){
+    char* root;
+    root = VCWD_GETCWD(root,MAXPATHLEN);
+    return root;
+}
+
+void autoload(char* class, zval *namespace){
+
+    char* loadClass = (char*)emalloc(sizeof(class));
+    strcpy(loadClass,class);
+
+    char* realpath = app_path();
+
+    zval *item;
+    ZEND_HASH_FOREACH_VAL(Z_ARR_P(namespace), item){
+
+        char *tmp = ZSTR_VAL(Z_STR_P(item));
+        char *className = emalloc(sizeof(realpath) + sizeof(tmp) + 6);
+        php_sprintf(className,"%s/%s/%s.php",realpath,tmp,loadClass);
+        load(className);
+        efree(className);
+
+    }ZEND_HASH_FOREACH_END();
+
+    efree(loadClass);
 
 }
 
 int load(char *path) {
 
 	zend_file_handle file_handle;
-	zend_op_array *op_array;
 	char *realpath;
 
 	realpath = (char *) ecalloc(MAXPATHLEN, sizeof(char));
@@ -154,13 +185,14 @@ int load(char *path) {
 	if (!VCWD_REALPATH(path, realpath)) {
 		return 0;
 	}
+
 	efree(realpath);
 
     zend_stream_init_filename(&file_handle, (char *) path);
 
-	op_array = zend_compile_file(&file_handle, ZEND_REQUIRE_ONCE);
+	zend_compile_file(&file_handle, ZEND_REQUIRE_ONCE);
 
-	if (op_array && file_handle.handle.stream.handle) {
+	if (file_handle.handle.stream.handle) {
 		if (!file_handle.opened_path) {
 			file_handle.opened_path = zend_string_init(path, strlen(path), 0);
 		}
@@ -168,22 +200,11 @@ int load(char *path) {
 		zend_hash_add_empty_element(&EG(included_files),
 				file_handle.opened_path);
 	}
+
 	zend_destroy_file_handle(&file_handle);
 
-	if (op_array) {
-		zval result;
+    return 1;
 
-		ZVAL_UNDEF(&result);
-		zend_execute(op_array, &result);
-
-		destroy_op_array(op_array);
-		efree_size(op_array, sizeof(op_array));
-		if (!EG(exception)) {
-			zval_ptr_dtor(&result);
-		}
-		return 1;
-	}
-	return 0;
 }
 
 
@@ -195,6 +216,7 @@ EMICRO_MODULE_D(application) {
 
 	//static
 	zend_declare_property_null(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
+	zend_declare_property_null(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_NAMESPACE), ZEND_ACC_PUBLIC TSRMLS_CC);
 
 	return SUCCESS; // @suppress("Symbol is not resolved")
 }
