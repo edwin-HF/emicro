@@ -88,7 +88,9 @@ zval* parseParams(size_t type, char* key, bool_int disableDispatch){
 }
 
 PHP_METHOD(emicro_request, __construct){
-    ZEND_PARSE_PARAMETERS_NONE();
+    // ZEND_PARSE_PARAMETERS_NONE();
+    php_printf("asdfasdf");
+    // RETURN_NULL();
 }
 
 PHP_METHOD(emicro_request, __clone){
@@ -389,8 +391,8 @@ PHP_METHOD(emicro_request, header){
 }
 
 zend_function_entry emicro_request_methods[] = {
-	PHP_ME(emicro_request, __construct, NULL, ZEND_ACC_PRIVATE)
-	PHP_ME(emicro_request, __clone, NULL, ZEND_ACC_PRIVATE)
+	PHP_ME(emicro_request, __construct, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_CTOR)
+	PHP_ME(emicro_request, __clone, NULL, ZEND_ACC_PUBLIC)
 	PHP_ME(emicro_request, get, arginfo_request_get, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
 	PHP_ME(emicro_request, post, arginfo_request_post, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_request, input, arginfo_request_input, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)

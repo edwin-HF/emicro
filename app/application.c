@@ -2,6 +2,7 @@
 #include "php_ini.h"
 #include "standard/php_filestat.h"
 #include "main/SAPI.h"
+#include "php_main.h"
 #include "Zend/zend_API.h"
 #include "zend_exceptions.h"
 
@@ -52,7 +53,7 @@ PHP_METHOD(emicro_application, load){
 
     char *realpath = app_path();
     char *classPath = replace(class,"\\","/");
-    char *className = emalloc(sizeof(realpath) + sizeof(classPath) + 6);
+    char *className = emalloc(MAXPATHLEN);
 
     php_sprintf(className,"%s/%s.php",realpath,classPath);
 
@@ -98,7 +99,6 @@ PHP_METHOD(emicro_application, run){
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
     dispatcher(this);
-
 
 }
 
@@ -149,30 +149,9 @@ char* public_path(){
 int load(char *path) {
 
 	zend_file_handle file_handle;
-	char *realpath;
 
-	realpath = (char *) ecalloc(MAXPATHLEN, sizeof(char));
-
-	if (!VCWD_REALPATH(path, realpath)) {
-		return 0;
-	}
-
-	efree(realpath);
-
-    zend_stream_init_filename(&file_handle, (char *) path);
-
-	zend_compile_file(&file_handle, ZEND_REQUIRE_ONCE);
-
-	if (file_handle.handle.stream.handle) {
-		if (!file_handle.opened_path) {
-			file_handle.opened_path = zend_string_init(path, strlen(path), 0);
-		}
-
-		zend_hash_add_empty_element(&EG(included_files),
-				file_handle.opened_path);
-	}
-
-	zend_destroy_file_handle(&file_handle);
+    zend_stream_init_filename(&file_handle, path);
+    php_execute_script(&file_handle);
 
     return 1;
 
@@ -213,18 +192,21 @@ static void dispatcher(zval* this){
 
     php_sprintf(nsController,"%s\\%s",Z_STR_P(d_controller)->val, controller);
 
-    zval controllerObj;
+    zval controllerObj,requestObj;
 	zend_string *c_key = zend_string_init(nsController,strlen(nsController), 0);
 	zend_class_entry *obj_ptr = zend_lookup_class(c_key);
 	zend_string_free(c_key);
 
 	object_init_ex(&controllerObj, obj_ptr);
+	object_init_ex(&requestObj, emicro_request_ce);
 
-    zval controllerMethod;
-    zval retval;
+    zval controllerMethod, retval, params[1];
+    
     ZVAL_STRING(&controllerMethod, method);
+    ZVAL_ZVAL(&params[0],&requestObj,1,1);
 
-    call_user_function(NULL,&controllerObj,&controllerMethod,&retval,0,NULL);
+    call_user_function(NULL,&controllerObj,&controllerMethod,&retval,1,params);
+    
 }
 
 zend_function_entry emicro_application_methods[] = {
