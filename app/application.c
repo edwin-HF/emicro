@@ -245,35 +245,54 @@ static void dispatcher(zval* this){
         // todo
         regex_t pattern_compiled;
         char *pattern = "@(\\w*?)\\(?([^\\)]*?)?\\)?";
-        regmatch_t pmatch[3];
-        size_t nmatch=3;
+
         
         regcomp(&pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
 
-        int reg_ret = regexec(&pattern_compiled,doc_document,nmatch,pmatch,1);
+        // int reg_ret = regexec(&pattern_compiled,doc_document,nmatch,pmatch,1);
 
-        if (reg_ret != 0)
+        size_t match_seek = 0;
+        char *seek_ptr = doc_document;
+
+        while (1)
         {
-            php_printf("no matched");
-        }else{
+
+            regmatch_t pmatch[3] = {};
+            size_t nmatch=3;
+            int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
+
+            if (reg_ret != 0)
+            {
+                break;
+            }
+            
+            char annotationController[255] = {};
+            char annotationParams[255] = {};
 
             for (size_t i = 0; i < nmatch; i++)
             {
-                char buf[255] = {0};
                 size_t bi = 0;
                 for (size_t j = pmatch[i].rm_so; j < pmatch[i].rm_eo; j++)
                 {
-                    buf[bi] = doc_document[j];
+                    if (i == 1)
+                    {
+                        annotationController[bi] = seek_ptr[j];
+                    }
+                    if (i == 2)
+                    {
+                        annotationParams[bi] = seek_ptr[j];
+                    }
                     bi++;
                 }
-                
-                php_printf("matched %d -- %s\n",i,buf);
+
             }
+
+            php_printf("annotation controller : %s\n",annotationController);
+            php_printf("annotation params : %s\n",annotationParams);
+
+            seek_ptr += pmatch[0].rm_eo;
+            
         }
-        
-
-        
-
 
         regfree (&pattern_compiled);
         
