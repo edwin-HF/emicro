@@ -11,6 +11,8 @@
 #include "../app/application.h"
 #include "request.h"
 
+#include <regex.h>
+
 zend_class_entry * emicro_application_ce;
 
 ZEND_BEGIN_ARG_INFO(arginfo_application_dispatcherNamespace, 0)
@@ -241,6 +243,41 @@ static void dispatcher(zval* this){
         php_printf("%s\n",doc_document);
 
         // todo
+        regex_t pattern_compiled;
+        char *pattern = "@(\\w*?)\\(?([^\\)]*?)?\\)?";
+        regmatch_t pmatch[3];
+        size_t nmatch=3;
+        
+        regcomp(&pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
+
+        int reg_ret = regexec(&pattern_compiled,doc_document,nmatch,pmatch,1);
+
+        if (reg_ret != 0)
+        {
+            php_printf("no matched");
+        }else{
+
+            for (size_t i = 0; i < nmatch; i++)
+            {
+                char buf[255] = {0};
+                size_t bi = 0;
+                for (size_t j = pmatch[i].rm_so; j < pmatch[i].rm_eo; j++)
+                {
+                    buf[bi] = doc_document[j];
+                    bi++;
+                }
+                
+                php_printf("matched %d -- %s\n",i,buf);
+            }
+        }
+        
+
+        
+
+
+        regfree (&pattern_compiled);
+        
+
 
     }
     
