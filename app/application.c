@@ -5,6 +5,7 @@
 #include "php_main.h"
 #include "Zend/zend_API.h"
 #include "zend_exceptions.h"
+#include "../../reflection/php_reflection.h"
 
 #include "../php_emicro.h"
 #include "../app/application.h"
@@ -13,6 +14,10 @@
 zend_class_entry * emicro_application_ce;
 
 ZEND_BEGIN_ARG_INFO(arginfo_application_dispatcherNamespace, 0)
+    ZEND_ARG_INFO(0, path)
+ZEND_END_ARG_INFO()
+
+ZEND_BEGIN_ARG_INFO(arginfo_application_annotationNamespace, 0)
     ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
@@ -30,6 +35,21 @@ PHP_METHOD(emicro_application, dispatcherNamespace){
     ZEND_PARSE_PARAMETERS_END();
 
     zend_update_property_str(emicro_application_ce,obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),params);
+
+    RETURN_OBJ(obj);
+
+}
+
+PHP_METHOD(emicro_application, annotationNamespace){
+    
+    zval *obj = getThis();
+    zend_string *params;
+
+    ZEND_PARSE_PARAMETERS_START(1,1)
+        Z_PARAM_STR(params);
+    ZEND_PARSE_PARAMETERS_END();
+
+    zend_update_property_str(emicro_application_ce,obj,ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),params);
 
     RETURN_OBJ(obj);
 
@@ -186,11 +206,44 @@ static void dispatcher(zval* this){
     }
 
     char *nsController = emalloc(PATH_MAX);
-    zval *d_controller, *rv;
+    char *nsAnnotation = emalloc(PATH_MAX);
+    zval *d_controller, *d_annotation, *c_rv, *a_rv;
 
-    d_controller = zend_read_property(emicro_application_ce,this,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,rv);
+    d_controller = zend_read_property(emicro_application_ce,this,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
+    d_annotation = zend_read_property(emicro_application_ce,this,ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),1,a_rv);
 
     php_sprintf(nsController,"%s\\%s",Z_STR_P(d_controller)->val, controller);
+
+    zval reflection_class;
+    zval ctor_name, reflection, ctor_params[1];
+    ZVAL_STRING(&ctor_name,"__construct");
+    ZVAL_STRING(&ctor_params[0],nsController);
+
+    object_init_ex(&reflection_class,reflection_class_ptr);
+    call_user_function(NULL,&reflection_class,&ctor_name,&reflection,1,&ctor_params);
+
+    zval func_reflection_method,doc_handler;
+    zval func_reflection_method_params[1];
+
+    ZVAL_STRING(&func_reflection_method,"getMethod");
+    ZVAL_STRING(&func_reflection_method_params[0],method);
+
+    call_user_function(NULL,&reflection_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
+    
+    zval func_doc_method, doc_method;
+    ZVAL_STRING(&func_doc_method,"getDocComment");
+    call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
+
+    if (Z_STR(doc_method)->len > 0)
+    {
+
+        char *doc_document = ZSTR_VAL(Z_STR(doc_method));
+        php_printf("%s\n",doc_document);
+
+        // todo
+
+    }
+    
 
     zval controllerObj,requestObj;
 	zend_string *c_key = zend_string_init(nsController,strlen(nsController), 0);
@@ -215,6 +268,7 @@ zend_function_entry emicro_application_methods[] = {
     PHP_ME(emicro_application, getInstance, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_application, load, arginfo_application_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_application, dispatcherNamespace, arginfo_application_dispatcherNamespace, ZEND_ACC_PUBLIC)
+    PHP_ME(emicro_application, annotationNamespace, arginfo_application_annotationNamespace, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, run, NULL, ZEND_ACC_PUBLIC)
     { NULL, NULL, NULL }
 
@@ -229,6 +283,7 @@ EMICRO_MODULE_D(application) {
 	//static
 	zend_declare_property_null(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
 	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),"controller", ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),"annotation", ZEND_ACC_PUBLIC TSRMLS_CC);
 
 	return SUCCESS; // @suppress("Symbol is not resolved")
 }

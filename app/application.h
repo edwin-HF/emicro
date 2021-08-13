@@ -3,6 +3,7 @@
 
 #define EMICRO_APPLICATION_INSTANCE "emicro_instance_application"
 #define EMICRO_APPLICATION_DISPATCHER_NAMESPACE "emicro_application_dispatcher_namespace"
+#define EMICRO_APPLICATION_ANNOTATION_NAMESPACE "emicro_application_annotation_namespace"
 
 extern zend_class_entry * emicro_application_ce;
 
