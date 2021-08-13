@@ -240,16 +240,13 @@ static void dispatcher(zval* this){
     {
 
         char *doc_document = ZSTR_VAL(Z_STR(doc_method));
-        php_printf("%s\n",doc_document);
+        // php_printf("%s\n",doc_document);
 
-        // todo
         regex_t pattern_compiled;
         char *pattern = "@(\\w*?)\\(?([^\\)]*?)?\\)?";
 
         
         regcomp(&pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
-
-        // int reg_ret = regexec(&pattern_compiled,doc_document,nmatch,pmatch,1);
 
         size_t match_seek = 0;
         char *seek_ptr = doc_document;
@@ -287,8 +284,24 @@ static void dispatcher(zval* this){
 
             }
 
-            php_printf("annotation controller : %s\n",annotationController);
-            php_printf("annotation params : %s\n",annotationParams);
+            php_sprintf(nsAnnotation,"%s\\%s",Z_STR_P(d_annotation)->val, annotationController);
+
+
+            zval annotation_obj, annotation_func, annotation_retval, annotation_params[1];
+            zend_string *a_key = zend_string_init(nsAnnotation,strlen(nsAnnotation), 0);
+            zend_class_entry *obj_ptr = zend_lookup_class(a_key);
+            zend_string_free(a_key);
+
+            if (obj_ptr)
+            {
+                object_init_ex(&annotation_obj, obj_ptr);
+            
+                ZVAL_STRING(&annotation_func, "run");
+                ZVAL_STRING(&annotation_params[0],annotationParams);
+
+                call_user_function(NULL,&annotation_obj,&annotation_func,&annotation_retval,1,annotation_params);
+
+            }
 
             seek_ptr += pmatch[0].rm_eo;
             
