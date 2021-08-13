@@ -232,21 +232,20 @@ static void dispatcher(zval* this){
 
     call_user_function(NULL,&reflection_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
     
-    zval func_doc_method, doc_method;
+    zval func_doc_method, *doc_method = (zval*)emalloc(sizeof(zval));
     ZVAL_STRING(&func_doc_method,"getDocComment");
-    call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
+    call_user_function(NULL,&doc_handler,&func_doc_method,doc_method,0,NULL);
 
-    if (Z_STR(doc_method)->len > 0)
+    if (Z_STR_P(doc_method)->len > 0)
     {
 
-        char *doc_document = ZSTR_VAL(Z_STR(doc_method));
+        char *doc_document = ZSTR_VAL(Z_STR_P(doc_method));
         // php_printf("%s\n",doc_document);
 
-        regex_t pattern_compiled;
+        regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
         char *pattern = "@(\\w*?)\\(?([^\\)]*?)?\\)?";
-
         
-        regcomp(&pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
+        regcomp(pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
 
         size_t match_seek = 0;
         char *seek_ptr = doc_document;
@@ -256,7 +255,7 @@ static void dispatcher(zval* this){
 
             regmatch_t pmatch[3] = {};
             size_t nmatch=3;
-            int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
+            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
 
             if (reg_ret != 0)
             {
@@ -307,12 +306,11 @@ static void dispatcher(zval* this){
             
         }
 
-        regfree (&pattern_compiled);
-        
-
+        regfree (pattern_compiled);
 
     }
     
+    efree(doc_method);
 
     zval controllerObj,requestObj;
 	zend_string *c_key = zend_string_init(nsController,strlen(nsController), 0);
