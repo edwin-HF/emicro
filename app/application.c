@@ -23,6 +23,10 @@ ZEND_BEGIN_ARG_INFO(arginfo_application_annotationNamespace, 0)
     ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
+ZEND_BEGIN_ARG_INFO(arginfo_application_setAppPath, 0)
+    ZEND_ARG_INFO(0, path)
+ZEND_END_ARG_INFO()
+
 ZEND_BEGIN_ARG_INFO(arginfo_application_load, 0)
     ZEND_ARG_INFO(0, class)
 ZEND_END_ARG_INFO()
@@ -39,6 +43,35 @@ PHP_METHOD(emicro_application, dispatcherNamespace){
     zend_update_property_str(emicro_application_ce,obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),params);
 
     RETURN_OBJ(obj);
+
+}
+
+PHP_METHOD(emicro_application, setAppPath){
+    
+    zval *obj = getThis();
+    zend_string *params;
+
+    ZEND_PARSE_PARAMETERS_START(1,1)
+        Z_PARAM_STR(params);
+    ZEND_PARSE_PARAMETERS_END();
+
+    zend_update_static_property_string(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),params->val);
+
+    RETURN_OBJ(obj);
+
+}
+
+PHP_METHOD(emicro_application, getAppPath){
+    
+    zval *obj = getThis();
+    zval *retval, *rv;
+
+    ZEND_PARSE_PARAMETERS_NONE();
+
+    retval = zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
+
+
+    RETURN_ZVAL(retval,1,1);
 
 }
 
@@ -67,13 +100,17 @@ PHP_METHOD(emicro_application, __clone){
 
 PHP_METHOD(emicro_application, load){
 
+    zval *this = getThis();
+    zval *root_path , *rv;
     zval *class;
     size_t class_len;
     ZEND_PARSE_PARAMETERS_START(1,1)
         Z_PARAM_ZVAL(class);
     ZEND_PARSE_PARAMETERS_END();
 
-    char *realpath = app_path();
+    root_path =zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
+
+    char *realpath = Z_STRVAL_P(root_path);
     char *classPath = replace(class,"\\","/");
     char *className = emalloc(MAXPATHLEN);
 
@@ -114,6 +151,10 @@ PHP_METHOD(emicro_application, run){
     zval func_name;
     zval func_autoload;
     zval params[1],ret;
+
+    char *appPath = app_path();
+
+    zend_update_static_property_string(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),appPath);
 
     ZVAL_STRING(&func_name, "spl_autoload_register");
     ZVAL_STRING(&params[0], "EMicro\\Application::load");
@@ -170,11 +211,14 @@ char* public_path(){
 
 int load(char *path) {
 
-	zend_file_handle file_handle;
+    if (access(path,F_OK) != -1)
+    {
+        zend_file_handle file_handle;
 
-    zend_stream_init_filename(&file_handle, path);
-    php_execute_script(&file_handle);
-
+        zend_stream_init_filename(&file_handle, path);
+        php_execute_script(&file_handle);
+    }
+    
     return 1;
 
 }
@@ -312,13 +356,23 @@ static void dispatcher(zval* this){
     
     efree(doc_method);
 
+
     zval controllerObj,requestObj;
 	zend_string *c_key = zend_string_init(nsController,strlen(nsController), 0);
 	zend_class_entry *obj_ptr = zend_lookup_class(c_key);
 	zend_string_free(c_key);
 
-	object_init_ex(&controllerObj, obj_ptr);
+    zval ref_controller_func, controller_retval;
+    ZVAL_STRING(&ref_controller_func, "newInstance");
+    call_user_function(NULL,&reflection_class,&ref_controller_func,&controllerObj,0,NULL);
+
+	// object_init_ex(&controllerObj, obj_ptr);
 	object_init_ex(&requestObj, emicro_request_ce);
+
+    zval func_construct, construct_retval;
+
+    // ZVAL_STRING(&func_construct, "__construct");
+    // call_user_function(NULL,&controllerObj,&func_construct,&construct_retval,0,NULL);
 
     zval controllerMethod, retval, params[1];
     
@@ -336,6 +390,8 @@ zend_function_entry emicro_application_methods[] = {
     PHP_ME(emicro_application, load, arginfo_application_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_application, dispatcherNamespace, arginfo_application_dispatcherNamespace, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, annotationNamespace, arginfo_application_annotationNamespace, ZEND_ACC_PUBLIC)
+    PHP_ME(emicro_application, setAppPath, arginfo_application_setAppPath, ZEND_ACC_PUBLIC)
+    PHP_ME(emicro_application, getAppPath, NULL, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, run, NULL, ZEND_ACC_PUBLIC)
     { NULL, NULL, NULL }
 
@@ -351,6 +407,7 @@ EMICRO_MODULE_D(application) {
 	zend_declare_property_null(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
 	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),"controller", ZEND_ACC_PUBLIC TSRMLS_CC);
 	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),"annotation", ZEND_ACC_PUBLIC TSRMLS_CC);
+	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_APP_PATH),"", ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 
 	return SUCCESS; // @suppress("Symbol is not resolved")
 }

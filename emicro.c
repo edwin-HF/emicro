@@ -13,6 +13,7 @@
 
 #include "php_emicro.h"
 #include "app/application.h"
+#include "app/dispatcher.h"
 #include "app/controller.h"
 #include "app/request.h"
 
