@@ -8,10 +8,13 @@
 
 extern zend_class_entry * emicro_application_ce;
 
-int load(char *path);
+char* root_path();
 char* app_path();
-char* replace(zval* str, char *find, char *replace);
+zval* load(char *path);
 static void dispatcher();
+void annotation_dispatcher_callback(char *file);
+void parse_annotation_dispatcher_callback(char *annotation, char *annotation_param, void *params);
+void parse_annotation_method_callback(char *annotation, char *annotation_param, void *params);
 
 EMICRO_MODULE_D(application);
 

@@ -12,12 +12,17 @@ extern zend_module_entry emicro_module_entry;
 ZEND_TSRMLS_CACHE_EXTERN()
 # endif
 
-ZEND_BEGIN_MODULE_GLOBALS (emicro)
+#define EMICRO_G(v) emicro_globals.v
 
+ZEND_BEGIN_MODULE_GLOBALS (emicro)
+    HashTable *router;
 ZEND_END_MODULE_GLOBALS (emicro)
 
 #define EMICRO_MODULE_D(module) int emicro_##module()
 #define EMICRO_STARTUP(module) emicro_##module()
 
+
+void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval);
+void z_dtor(zval *zv);
 
 #endif	/* PHP_EMICRO_H */

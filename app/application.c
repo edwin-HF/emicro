@@ -8,12 +8,15 @@
 #include "../../reflection/php_reflection.h"
 
 #include "../php_emicro.h"
+#include "helper.h"
 #include "../app/application.h"
 #include "request.h"
 
 #include <regex.h>
 
 zend_class_entry * emicro_application_ce;
+
+ZEND_DECLARE_MODULE_GLOBALS(emicro);
 
 ZEND_BEGIN_ARG_INFO(arginfo_application_dispatcherNamespace, 0)
     ZEND_ARG_INFO(0, path)
@@ -101,16 +104,16 @@ PHP_METHOD(emicro_application, __clone){
 PHP_METHOD(emicro_application, load){
 
     zval *this = getThis();
-    zval *root_path , *rv;
+    zval *app_path , *rv;
     zval *class;
     size_t class_len;
     ZEND_PARSE_PARAMETERS_START(1,1)
         Z_PARAM_ZVAL(class);
     ZEND_PARSE_PARAMETERS_END();
 
-    root_path =zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
+    app_path =zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
 
-    char *realpath = Z_STRVAL_P(root_path);
+    char *realpath  = Z_STRVAL_P(app_path);
     char *classPath = replace(class,"\\","/");
     char *className = emalloc(MAXPATHLEN);
 
@@ -143,7 +146,6 @@ PHP_METHOD(emicro_application, getInstance){
     RETURN_ZVAL(instance,1,0);
 }
 
-
 PHP_METHOD(emicro_application, run){
 
     zval* this = getThis();
@@ -161,226 +163,297 @@ PHP_METHOD(emicro_application, run){
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
-    dispatcher(this);
+    parse_annotation_dispatcher();
+
+    dispatcher();
 
 }
-
 
 char* app_path(){
 
-    zval func_name;
-    zval ret_replace;
-    zval params[3];
-    char* realpath;
-    char* root;
-    root = VCWD_GETCWD(root,MAXPATHLEN);
+    zval str;
+    ZVAL_STRING(&str,root_path());
 
-    ZVAL_STRING(&func_name, "str_replace");
-    ZVAL_STRING(&params[0], "public");
-    ZVAL_STRING(&params[1], "application");
-    ZVAL_STRING(&params[2], root);
-
-    call_user_function(NULL,NULL,&func_name,&ret_replace,3,params);
-    return Z_STRVAL(ret_replace);
+    return replace(&str,"public","application");
 
 }
 
-char* replace(zval* str, char *find, char *replace){
-
-    zval func_name;
-    zval ret_replace;
-    zval params[3];
-
-    ZVAL_STRING(&func_name, "str_replace");
-    ZVAL_STRING(&params[0], find);
-    ZVAL_STRING(&params[1], replace);
-    // ZVAL_ZVAL(&params[2],str,1,0);
-    params[2] = *str;
-
-    call_user_function(NULL,NULL,&func_name,&ret_replace,3,params);
-
-    return Z_STRVAL(ret_replace);
-
-}
-
-char* public_path(){
+char* root_path(){
     char* root;
     root = VCWD_GETCWD(root,MAXPATHLEN);
     return root;
 }
 
-int load(char *path) {
+zval* load(char *path) {
 
     if (access(path,F_OK) != -1)
     {
         zend_file_handle file_handle;
+        zval *retval = (zval*)emalloc(sizeof(zval));
 
         zend_stream_init_filename(&file_handle, path);
-        php_execute_script(&file_handle);
+        php_execute_simple_script(&file_handle,retval);
+        return retval;
     }
-    
-    return 1;
+
+    return NULL;
 
 }
 
-static void dispatcher(zval* this){
+static void dispatcher(){
 
     zval* router = dispatchParams(TRACK_VARS_GET,"s");
-    char* str_router = Z_STRVAL_P(router);
-    char* delimiter = "/";
-    char* split_save_pointer;
-    char* split_str;
-    char* controller = NULL;
-    char* method = NULL;
-    while (NULL != (split_str = php_strtok_r(str_router,delimiter,&split_save_pointer)))
-    {
-        str_router = NULL;
+    char router_path[MAXNAMLEN];
 
-        if (controller == NULL)
-        {
-            controller = split_str;
-            // controller[0] = toupper(split_str[0]);
-            continue;
-        }
+    l_trim(ZSTR_VAL(Z_STR_P(router)),router_path,1);
 
-        if (method == NULL)
-        {
-            method = (split_str);
-            break;
-        }
-        
-    }
+    HashTable *ht = EMICRO_G(router);
 
-    char *nsController = emalloc(PATH_MAX);
-    char *nsAnnotation = emalloc(PATH_MAX);
-    zval *d_controller, *d_annotation, *c_rv, *a_rv;
+    zval* router_map = zend_hash_str_find(ht,router_path,strlen(router_path));
 
-    d_controller = zend_read_property(emicro_application_ce,this,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
-    d_annotation = zend_read_property(emicro_application_ce,this,ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),1,a_rv);
+    zval *item;
+    zend_string *key;
+    int8_t index = 0;
 
-    php_sprintf(nsController,"%s\\%s",Z_STR_P(d_controller)->val, controller);
+    zval *z_controller = zend_hash_index_find(Z_ARRVAL_P(router_map),0);
+    zval *z_method     = zend_hash_index_find(Z_ARRVAL_P(router_map),1);
 
-    zval reflection_class;
+    char *s_controller = ZSTR_VAL(Z_STR_P(z_controller));
+    char *s_method     = ZSTR_VAL(Z_STR_P(z_method));
+
+    zval obj_controller, obj_request;
+
+    zval ref_class;
     zval ctor_name, reflection, ctor_params[1];
     ZVAL_STRING(&ctor_name,"__construct");
-    ZVAL_STRING(&ctor_params[0],nsController);
+    ZVAL_STRING(&ctor_params[0],s_controller);
 
-    object_init_ex(&reflection_class,reflection_class_ptr);
-    call_user_function(NULL,&reflection_class,&ctor_name,&reflection,1,&ctor_params);
+    object_init_ex(&ref_class,reflection_class_ptr);
+    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
+
 
     zval func_reflection_method,doc_handler;
     zval func_reflection_method_params[1];
 
     ZVAL_STRING(&func_reflection_method,"getMethod");
-    ZVAL_STRING(&func_reflection_method_params[0],method);
+    ZVAL_STRING(&func_reflection_method_params[0],s_method);
 
-    call_user_function(NULL,&reflection_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
-    
-    zval func_doc_method, *doc_method = (zval*)emalloc(sizeof(zval));
+    call_user_function(NULL,&ref_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
+
+    zval func_doc_method, doc_method[MAXPATHLEN];
     ZVAL_STRING(&func_doc_method,"getDocComment");
-    call_user_function(NULL,&doc_handler,&func_doc_method,doc_method,0,NULL);
+    call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
 
-    if (Z_STR_P(doc_method)->len > 0)
-    {
-
-        char *doc_document = ZSTR_VAL(Z_STR_P(doc_method));
-        // php_printf("%s\n",doc_document);
-
-        regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
-        char *pattern = "@(\\w*?)\\(?([^\\)]*?)?\\)?";
-        
-        regcomp(pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
-
-        size_t match_seek = 0;
-        char *seek_ptr = doc_document;
-
-        while (1)
-        {
-
-            regmatch_t pmatch[3] = {};
-            size_t nmatch=3;
-            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
-
-            if (reg_ret != 0)
-            {
-                break;
-            }
-            
-            char annotationController[255] = {};
-            char annotationParams[255] = {};
-
-            for (size_t i = 0; i < nmatch; i++)
-            {
-                size_t bi = 0;
-                for (size_t j = pmatch[i].rm_so; j < pmatch[i].rm_eo; j++)
-                {
-                    if (i == 1)
-                    {
-                        annotationController[bi] = seek_ptr[j];
-                    }
-                    if (i == 2)
-                    {
-                        annotationParams[bi] = seek_ptr[j];
-                    }
-                    bi++;
-                }
-
-            }
-
-            php_sprintf(nsAnnotation,"%s\\%s",Z_STR_P(d_annotation)->val, annotationController);
-
-
-            zval annotation_obj, annotation_func, annotation_retval, annotation_params[1];
-            zend_string *a_key = zend_string_init(nsAnnotation,strlen(nsAnnotation), 0);
-            zend_class_entry *obj_ptr = zend_lookup_class(a_key);
-            zend_string_free(a_key);
-
-            if (obj_ptr)
-            {
-                object_init_ex(&annotation_obj, obj_ptr);
-            
-                ZVAL_STRING(&annotation_func, "run");
-                ZVAL_STRING(&annotation_params[0],annotationParams);
-
-                call_user_function(NULL,&annotation_obj,&annotation_func,&annotation_retval,1,annotation_params);
-
-            }
-
-            seek_ptr += pmatch[0].rm_eo;
-            
-        }
-
-        regfree (pattern_compiled);
-
+    if (Z_STR_P(doc_method)->len > 0){
+        parse_annotation(ZSTR_VAL(Z_STR_P(doc_method)),parse_annotation_method_callback,NULL);
     }
-    
-    efree(doc_method);
-
-
-    zval controllerObj,requestObj;
-	zend_string *c_key = zend_string_init(nsController,strlen(nsController), 0);
-	zend_class_entry *obj_ptr = zend_lookup_class(c_key);
-	zend_string_free(c_key);
 
     zval ref_controller_func, controller_retval;
     ZVAL_STRING(&ref_controller_func, "newInstance");
-    call_user_function(NULL,&reflection_class,&ref_controller_func,&controllerObj,0,NULL);
+    call_user_function(NULL,&ref_class,&ref_controller_func,&obj_controller,0,NULL);
 
-	// object_init_ex(&controllerObj, obj_ptr);
-	object_init_ex(&requestObj, emicro_request_ce);
+	object_init_ex(&obj_request, emicro_request_ce);
 
     zval func_construct, construct_retval;
-
-    // ZVAL_STRING(&func_construct, "__construct");
-    // call_user_function(NULL,&controllerObj,&func_construct,&construct_retval,0,NULL);
-
     zval controllerMethod, retval, params[1];
     
-    ZVAL_STRING(&controllerMethod, method);
-    ZVAL_ZVAL(&params[0],&requestObj,1,1);
+    ZVAL_STRING(&controllerMethod, s_method);
+    ZVAL_ZVAL(&params[0],&obj_request,1,1);
 
-    call_user_function(NULL,&controllerObj,&controllerMethod,&retval,1,params);
+    call_user_function(NULL,&obj_controller,&controllerMethod,&retval,1,params);
+
     
+}
+
+static char* ref_class_doc(char *class){
+
+    zval reflection_class;
+    zval ctor_name, reflection, ctor_params[1];
+    ZVAL_STRING(&ctor_name,"__construct");
+    ZVAL_STRING(&ctor_params[0],class);
+
+    object_init_ex(&reflection_class,reflection_class_ptr);
+    call_user_function(NULL,&reflection_class,&ctor_name,&reflection,1,&ctor_params);
+
+    zval func_doc_method, doc;
+    ZVAL_STRING(&func_doc_method,"getDocComment");
+    call_user_function(NULL,&reflection_class,&func_doc_method,&doc,0,NULL);
+
+    if (Z_TYPE(doc) == IS_FALSE)
+    {
+        return "";
+    }else{
+        return ZSTR_VAL(Z_STR(doc));
+    }
+    
+}
+
+void parse_annotation_method_callback(char *annotation, char *annotation_param, void *params){
+
+    zval app_obj, *c_rv;
+
+    emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
+
+    zval *z_annotation = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),1,c_rv);
+
+    char ns_annotation[MAXNAMLEN];
+    php_sprintf(ns_annotation,"%s\\%s",ZSTR_VAL(Z_STR_P(z_annotation)), annotation);
+
+    zval annotation_obj, annotation_func, annotation_retval, annotation_params[1];
+    zend_string *a_key = zend_string_init(ns_annotation,strlen(ns_annotation), 0);
+    zend_class_entry *obj_ptr = zend_lookup_class(a_key);
+    zend_string_free(a_key);
+
+    if (obj_ptr)
+    {
+        object_init_ex(&annotation_obj, obj_ptr);
+    
+        ZVAL_STRING(&annotation_func, "run");
+        ZVAL_STRING(&annotation_params[0],annotation_param);
+
+        call_user_function(NULL,&annotation_obj,&annotation_func,&annotation_retval,1,annotation_params);
+
+    }
+
+}
+
+void parse_annotation_dispatcher_method_callback(char *annotation, char *annotation_param, void *params){
+
+    char **router = (char**)(params);
+    char *r_router = router[0];
+    char *ns_class = router[1];
+    char *method   = router[2];
+    char router_path[MAXPATHLEN] = {0};
+
+    if (strcmp(method,"__construct") == 0)
+    {
+        return;
+    }
+
+    if (strcmp(annotation,"Route") == 0)
+    {
+        php_sprintf(router_path,"%s/%s",r_router,annotation_param);
+    }else{
+        php_sprintf(router_path,"%s/%s",r_router,method);
+    }
+
+
+    HashTable *ht = EMICRO_G(router);
+    zval z_router_map;
+    array_init(&z_router_map);
+
+    add_next_index_string(&z_router_map,ns_class);
+    add_next_index_string(&z_router_map,method);
+
+    zend_hash_str_update(ht,router_path,strlen(router_path),&z_router_map);
+
+    
+}
+
+void parse_annotation_dispatcher_callback(char *annotation, char *annotation_param, void *params){
+
+    char **router = (char**)(params);
+    char ns_class[MAXNAMLEN];
+    char *ns = router[0];
+    char *class = router[1];
+    php_sprintf(ns_class,"%s\\%s",ns,class);
+
+    zval reflection_class;
+    zval ctor_name, reflection, ctor_params[1];
+    ZVAL_STRING(&ctor_name,"__construct");
+    ZVAL_STRING(&ctor_params[0],ns_class);
+
+    object_init_ex(&reflection_class,reflection_class_ptr);
+    call_user_function(NULL,&reflection_class,&ctor_name,&reflection,1,&ctor_params);
+
+    zval func_methods, doc;
+    ZVAL_STRING(&func_methods,"getMethods");
+    call_user_function(NULL,&reflection_class,&func_methods,&doc,0,NULL);
+
+    zval *method_obj,*rv;
+
+    char c_router[MAXNAMLEN] = {0};
+
+    if ( strcmp(annotation,"Controller") == 0)
+    {
+        strcpy(c_router,annotation_param);
+    }else{
+        strcpy(c_router,class);
+    }
+
+    ZEND_HASH_FOREACH_VAL(Z_ARRVAL(doc),method_obj){
+
+        zval *method = zend_read_property(reflection_method_ptr,method_obj,ZEND_STRL("name"),1,rv);
+        char *str_method = ZSTR_VAL(Z_STR_P(method));
+        
+        zval func_ref_method,doc_handler;
+        zval func_ref_method_params[1] = {method};
+
+        ZVAL_STRING(&func_ref_method,"getMethod");
+        ZVAL_STRING(&func_ref_method_params[0],str_method);
+
+        call_user_function(NULL,&reflection_class,&func_ref_method,&doc_handler,1,&func_ref_method_params);
+        
+        zval func_doc_method, doc_method;
+        ZVAL_STRING(&func_doc_method,"getDocComment");
+        call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
+
+        char *document = ZSTR_VAL(Z_STR(doc_method));
+        char *params[3];
+
+
+        if (Z_TYPE(doc_method) == IS_FALSE)
+        {
+            document = "";
+        }
+
+        params[0] = c_router;
+        params[1] = ns_class;
+        params[2] = str_method;
+
+        parse_annotation_filter(document,parse_annotation_dispatcher_method_callback,params,"Route");
+
+
+    }ZEND_HASH_FOREACH_END();
+
+}
+
+void annotation_dispatcher_callback(char *file){
+
+    char* filename = basename(file);
+    char class[MAXNAMLEN] = {0};
+    char nsController[MAXNAMLEN] = {0};
+    strncpy(class,filename,strlen(filename) - 4);
+    zval app_obj,*c_rv;
+    emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
+
+    zval *z_controller = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
+
+    char *ns = ZSTR_VAL(Z_STR_P(z_controller));
+
+    php_sprintf(nsController,"%s\\%s",ns, class);
+
+    char *class_document = ref_class_doc(nsController);
+
+    char* router[2] = {ns,class};
+
+    parse_annotation_filter(class_document,parse_annotation_dispatcher_callback,router,"Controller");
+
+}
+
+void parse_annotation_dispatcher(){
+
+    char *path =  app_path();
+    zval app_obj,*c_rv;
+
+    emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
+    zval *z_controller = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
+
+    char root[MAXPATHLEN];
+    php_sprintf(root,"%s/%s",path,ZSTR_VAL(Z_STR_P(z_controller)));
+
+    scan_dir(root,annotation_dispatcher_callback);
+
 }
 
 zend_function_entry emicro_application_methods[] = {

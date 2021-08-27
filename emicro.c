@@ -12,9 +12,9 @@
 #include "zend_exceptions.h"
 
 #include "php_emicro.h"
+#include "app/helper.h"
 #include "app/application.h"
 #include "app/dispatcher.h"
-#include "app/controller.h"
 #include "app/request.h"
 
 ZEND_DECLARE_MODULE_GLOBALS(emicro);
@@ -25,6 +25,39 @@ ZEND_DECLARE_MODULE_GLOBALS(emicro);
 	ZEND_PARSE_PARAMETERS_START(0, 0) \
 	ZEND_PARSE_PARAMETERS_END()
 #endif
+
+void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval){
+
+    zval z_func;
+    char *str_func = emalloc(MAXPATHLEN);
+    php_sprintf(str_func,"%s::%s",ZSTR_VAL(ce->name),method);
+    ZVAL_STRING(&z_func,str_func);
+    call_user_function(NULL,NULL,&z_func,retval,0,NULL);
+    efree(str_func);
+
+}
+
+void z_dtor(zval *zv)
+{
+	// zval_dtor(zv);
+}
+
+static void init_global(){
+
+	EMICRO_G(router) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(EMICRO_G(router),8,NULL,z_dtor,1);
+
+}
+
+void release_global(){
+
+	if (EMICRO_G(router))
+	{
+		zend_hash_clean(EMICRO_G(router));
+		pefree(EMICRO_G(router),1);
+	}
+	
+}
 
 /* {{{ void emicro_test1()
  */
@@ -60,6 +93,8 @@ PHP_GINIT_FUNCTION(emicro) {
 
 PHP_MINIT_FUNCTION(emicro){
 
+	init_global();
+
 	EMICRO_STARTUP(application);
 	EMICRO_STARTUP(request);
 
@@ -85,6 +120,7 @@ PHP_RSHUTDOWN_FUNCTION(emicro){
 }
 
 PHP_MSHUTDOWN_FUNCTION(emicro){
+	release_global();
 	return SUCCESS;
 }
 /* }}} */
