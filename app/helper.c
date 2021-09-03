@@ -159,3 +159,21 @@ void l_trim(char *src, char *des, size_t len){
     strcpy(des,ret);
 
 }
+
+
+void* explode_single(char *str, char *splite, explode_callback callback){
+
+    size_t len = 0;
+    char *a_str[255];
+    char *cur_str = strtok(str,splite);
+
+    while (cur_str)
+    {
+        a_str[len] = cur_str;
+        len++;
+        cur_str = strtok(NULL,splite);
+    }
+
+    return callback(a_str,len);
+
+}

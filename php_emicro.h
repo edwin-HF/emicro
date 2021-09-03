@@ -16,6 +16,7 @@ ZEND_TSRMLS_CACHE_EXTERN()
 
 ZEND_BEGIN_MODULE_GLOBALS (emicro)
     HashTable *router;
+    HashTable *config;
 ZEND_END_MODULE_GLOBALS (emicro)
 
 #define EMICRO_MODULE_D(module) int emicro_##module()

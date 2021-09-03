@@ -163,9 +163,32 @@ PHP_METHOD(emicro_application, run){
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
+    parse_config();
+
     parse_annotation_dispatcher();
 
     dispatcher();
+
+}
+
+void print_g(){
+
+    zend_string *cur_key;
+    zval *cur_val;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(EMICRO_G(router),cur_key,cur_val){
+
+        zend_string *key;
+        zval *cur_v;
+
+        php_printf("\n %s --> ",cur_key->val);
+
+        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARR_P(cur_val),key,cur_v){
+
+            php_printf(" %s ",ZSTR_VAL(Z_STR_P(cur_v)));
+
+        }ZEND_HASH_FOREACH_END();
+
+    }ZEND_HASH_FOREACH_END();
 
 }
 
@@ -211,6 +234,12 @@ static void dispatcher(){
 
     zval* router_map = zend_hash_str_find(ht,router_path,strlen(router_path));
 
+    if (router_map == NULL)
+    {
+        zend_throw_exception(NULL,"router not exist \n",0);
+        return;
+    }
+    
     zval *item;
     zend_string *key;
     int8_t index = 0;
@@ -332,11 +361,10 @@ void parse_annotation_dispatcher_method_callback(char *annotation, char *annotat
 
     if (strcmp(annotation,"Route") == 0)
     {
-        php_sprintf(router_path,"%s/%s",r_router,annotation_param);
+        strlen(r_router) == 0 ? strcpy(router_path,annotation_param) : php_sprintf(router_path,"%s/%s",r_router,annotation_param);
     }else{
-        php_sprintf(router_path,"%s/%s",r_router,method);
+        strlen(r_router) == 0 ? strcpy(router_path,method) : php_sprintf(router_path,"%s/%s",r_router,method);
     }
-
 
     HashTable *ht = EMICRO_G(router);
     zval z_router_map;
@@ -420,6 +448,16 @@ void parse_annotation_dispatcher_callback(char *annotation, char *annotation_par
 
 void annotation_dispatcher_callback(char *file){
 
+    struct stat buf;
+
+    // if (stat(file,&buf) != 0)
+    // {
+    //     zend_throw_exception(NULL,"obtain file stat err",500);
+    // }
+
+    // php_printf("last modify time %s\n",ctime(&buf.st_mtim));
+    
+
     char* filename = basename(file);
     char class[MAXNAMLEN] = {0};
     char nsController[MAXNAMLEN] = {0};
@@ -453,6 +491,33 @@ void parse_annotation_dispatcher(){
     php_sprintf(root,"%s/%s",path,ZSTR_VAL(Z_STR_P(z_controller)));
 
     scan_dir(root,annotation_dispatcher_callback);
+
+}
+
+void parse_config_callback(char* file){
+
+    char *filename = basename(file);
+    char config[MAXNAMLEN] = {0};
+    strncpy(config,filename,strlen(filename) - 4);
+
+    zval *z_config = load(file);
+
+    zend_string *key;
+    zval *curr_item;
+
+    HashTable *ht_config = EMICRO_G(config);
+
+    zend_hash_str_update(ht_config,config,strlen(config),z_config);
+
+}
+
+void parse_config(){
+    char *path =  app_path();
+    char config_path[MAXPATHLEN];
+
+    php_sprintf(config_path,"%s/config",path);
+
+    scan_dir(config_path,parse_config_callback);
 
 }
 

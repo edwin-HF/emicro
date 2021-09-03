@@ -47,6 +47,34 @@ static void init_global(){
 	EMICRO_G(router) = (HashTable*)pemalloc(sizeof(HashTable),1);
 	zend_hash_init(EMICRO_G(router),8,NULL,z_dtor,1);
 
+	EMICRO_G(config) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(EMICRO_G(config),8,NULL,z_dtor,1);
+
+}
+
+void* config_callback(char **a_str, size_t len){
+
+	HashTable *ht_config = EMICRO_G(config);
+
+	char *ht_config_key = a_str[0];
+
+	zval *ret = zend_hash_str_find(ht_config,ht_config_key,strlen(ht_config_key));
+
+
+	if (ret != NULL)
+	{
+		for (size_t i = 1; i < len; i++)
+		{
+			if (Z_TYPE_P(ret) == IS_ARRAY)
+			{
+				
+				ret = zend_hash_str_find(Z_ARRVAL_P(ret),a_str[i],strlen(a_str[i]));
+			}
+		}
+	}
+
+	return ret;
+	
 }
 
 void release_global(){
@@ -54,37 +82,48 @@ void release_global(){
 	if (EMICRO_G(router))
 	{
 		zend_hash_clean(EMICRO_G(router));
-		pefree(EMICRO_G(router),1);
+	}
+
+	if (EMICRO_G(config))
+	{
+		zend_hash_clean(EMICRO_G(config));
 	}
 	
 }
 
-/* {{{ void emicro_test1()
- */
-PHP_FUNCTION(emicro_test1)
-{
-	ZEND_PARSE_PARAMETERS_NONE();
-
-	php_printf("The extension %s is loaded and working!\r\n", "emicro");
-}
 /* }}} */
 
-/* {{{ string emicro_test2( [ string $var ] )
+/* {{{ string config( [ string $var ] )
  */
-PHP_FUNCTION(emicro_test2)
+PHP_FUNCTION(config)
 {
-	char *var = "World";
-	size_t var_len = sizeof("World") - 1;
-	zend_string *retval;
+	char *key;
+	size_t key_len;
+	zval *retval;
+	zval *z_default = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(1, 2)
+		Z_PARAM_STRING(key, key_len)
 		Z_PARAM_OPTIONAL
-		Z_PARAM_STRING(var, var_len)
+		Z_PARAM_ZVAL(z_default)
 	ZEND_PARSE_PARAMETERS_END();
+	
+	retval = (zval*)explode_single(key,".",config_callback);
 
-	retval = strpprintf(0, "Hello %s", var);
+	if (retval == NULL)
+	{
+		
+		if (z_default == NULL)
+		{
+			RETURN_NULL();
+		}else{
+			RETURN_ZVAL(z_default,0,1);
+		}
+		
+	}else{
+		RETURN_ZVAL(retval,0,1);
+	}
 
-	RETURN_STR(retval);
 }
 
 PHP_GINIT_FUNCTION(emicro) {
@@ -116,11 +155,12 @@ PHP_RINIT_FUNCTION(emicro)
 }
 
 PHP_RSHUTDOWN_FUNCTION(emicro){
+	release_global();
 	return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(emicro){
-	release_global();
+	
 	return SUCCESS;
 }
 /* }}} */
@@ -137,19 +177,17 @@ PHP_MINFO_FUNCTION(emicro)
 
 /* {{{ arginfo
  */
-ZEND_BEGIN_ARG_INFO(arginfo_emicro_test1, 0)
-ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_emicro_test2, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_emicro_config, 0)
 	ZEND_ARG_INFO(0, str)
+	ZEND_ARG_INFO(0,default)
 ZEND_END_ARG_INFO()
 /* }}} */
 
 /* {{{ emicro_functions[]
  */
 static const zend_function_entry emicro_functions[] = {
-	PHP_FE(emicro_test1,		arginfo_emicro_test1)
-	PHP_FE(emicro_test2,		arginfo_emicro_test2)
+	PHP_FE(config,		arginfo_emicro_config)
 	PHP_FE_END
 };
 /* }}} */
