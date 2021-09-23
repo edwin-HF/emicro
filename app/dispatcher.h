@@ -18,7 +18,9 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
 void annotation_cb_dispatcher_method(char *annotation, char *annotation_param, char *position, void *params);
 void annotation_cb_dispatcher(char *annotation, char *annotation_param, char *position, void *params);
 
-zval* call_dispatcher(zval *ref_class, char *method);
+zval* call_dispatcher(char *class, char *method);
 void call_dispatcher_annotation(char *annotation, char *annotation_param, zval *retval);
+void dispatcher_return(zval *retval);
+void annotation_run(zval *list, zval *retval);
 
 #endif

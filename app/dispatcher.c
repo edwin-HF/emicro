@@ -142,6 +142,40 @@ static char* ref_class_doc(char *class){
     
 }
 
+static char* ref_method_doc(char *class, char* method){
+
+    zval ref_class;
+    zval ctor_name, reflection, ctor_params[1];
+    ZVAL_STRING(&ctor_name,"__construct");
+    ZVAL_STRING(&ctor_params[0],class);
+
+    object_init_ex(&ref_class,reflection_class_ptr);
+    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
+
+
+    zval func_reflection_method,doc_handler;
+    zval func_reflection_method_params[1];
+
+    ZVAL_STRING(&func_reflection_method,"getMethod");
+    ZVAL_STRING(&func_reflection_method_params[0],method);
+
+    call_user_function(NULL,&ref_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
+
+    zval func_doc_method, doc_method;
+    ZVAL_STRING(&func_doc_method,"getDocComment");
+    call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
+
+    char *s_doc_method = "";
+
+    if (Z_TYPE(doc_method) != IS_FALSE)
+    {
+        s_doc_method = ZSTR_VAL(Z_STR(doc_method));
+    }
+
+    return s_doc_method;
+
+}
+
 void annotation_cb_dispatcher_method(char *annotation, char *annotation_param , char *position,  void *params){
 
     char **router = (char**)(params);
@@ -319,55 +353,35 @@ void dispatcher(){
     char *s_controller = ZSTR_VAL(Z_STR_P(z_controller));
     char *s_method     = ZSTR_VAL(Z_STR_P(z_method));
 
-    zval ref_class;
-    zval ctor_name, reflection, ctor_params[1];
-    ZVAL_STRING(&ctor_name,"__construct");
-    ZVAL_STRING(&ctor_params[0],s_controller);
+    zval called_class_before, called_class_after, called_method_before, called_method_after;
 
-    object_init_ex(&ref_class,reflection_class_ptr);
-    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
+    array_init(&called_class_before);
+    array_init(&called_class_after);
+    array_init(&called_method_before);
+    array_init(&called_method_after);
 
+    void *class_params[2] = {&called_class_before,&called_class_after};
+    char *s_doc_class = ref_class_doc(s_controller);
 
-    zval func_reflection_method,doc_handler;
-    zval func_reflection_method_params[1];
+    parse_annotation(s_doc_class,annotation_cb_dispatcher,class_params);
 
-    ZVAL_STRING(&func_reflection_method,"getMethod");
-    ZVAL_STRING(&func_reflection_method_params[0],s_method);
+    void *method_params[2] = {&called_method_before,&called_method_after};
+    char *s_doc_method = ref_method_doc(s_controller,s_method);
 
-    call_user_function(NULL,&ref_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
+    parse_annotation(s_doc_method,annotation_cb_dispatcher,method_params);
 
-    zval func_doc_method, doc_method;
-    ZVAL_STRING(&func_doc_method,"getDocComment");
-    call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
+    annotation_run(&called_class_before, NULL);
+    annotation_run(&called_method_before, NULL);
+    zval *retval = call_dispatcher(s_controller,s_method);
+    annotation_run(&called_method_after,retval);
+    annotation_run(&called_class_after,retval);
 
-    zval called_before, called_after;
+    efree(retval);
+}
 
-    array_init(&called_before);
-    array_init(&called_after);
-
-    void *params[2] = {&called_before,&called_after};
-    char *s_doc_method = "";
-
-    if (Z_TYPE(doc_method) != IS_FALSE)
-    {
-        s_doc_method = ZSTR_VAL(Z_STR(doc_method));
-    }
-
-    parse_annotation(s_doc_method,annotation_cb_dispatcher,params);
-
+void annotation_run(zval *list, zval *retval){
     zval *z_item;
-    ZEND_HASH_FOREACH_VAL(Z_ARR(called_before),z_item){
-
-        zval *z_class  = zend_hash_index_find(Z_ARR_P(z_item),0);
-        zval *z_method = zend_hash_index_find(Z_ARR_P(z_item),1);
-
-        call_dispatcher_annotation(ZSTR_VAL(Z_STR_P(z_class)),ZSTR_VAL(Z_STR_P(z_method)),NULL);
-
-    }ZEND_HASH_FOREACH_END();
-
-    zval *retval = call_dispatcher(&ref_class,s_method);
-
-    ZEND_HASH_FOREACH_VAL(Z_ARR(called_after),z_item){
+    ZEND_HASH_FOREACH_VAL(Z_ARR_P(list),z_item){
 
         zval *z_class  = zend_hash_index_find(Z_ARR_P(z_item),0);
         zval *z_method = zend_hash_index_find(Z_ARR_P(z_item),1);
@@ -376,7 +390,6 @@ void dispatcher(){
 
     }ZEND_HASH_FOREACH_END();
 
-    
 }
 
 void annotation_cb_dispatcher(char *annotation, char *annotation_param, char *position, void *params){
@@ -404,13 +417,21 @@ void annotation_cb_dispatcher(char *annotation, char *annotation_param, char *po
 
 }
 
-zval* call_dispatcher(zval *ref_class, char *method){
+zval* call_dispatcher(char *class, char *method){
+
+    zval ref_class;
+    zval ctor_name, reflection, ctor_params[1];
+    ZVAL_STRING(&ctor_name,"__construct");
+    ZVAL_STRING(&ctor_params[0],class);
+
+    object_init_ex(&ref_class,reflection_class_ptr);
+    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
 
     zval obj_controller, obj_request;
 
     zval ref_controller_func, controller_retval;
     ZVAL_STRING(&ref_controller_func, "newInstance");
-    call_user_function(NULL,ref_class,&ref_controller_func,&obj_controller,0,NULL);
+    call_user_function(NULL,&ref_class,&ref_controller_func,&obj_controller,0,NULL);
 
     object_init_ex(&obj_request, emicro_request_ce);
 
@@ -458,6 +479,22 @@ void call_dispatcher_annotation(char *annotation, char *annotation_param, zval *
 
         call_user_function(NULL,&annotation_obj,&annotation_func,&annotation_retval,2,annotation_params);
 
-        efree(retval);
     }
+}
+
+
+void dispatcher_return(zval *retval){
+
+    if (Z_TYPE_P(retval) != IS_NULL)
+    {
+        zval func_json_encode, json_encode_params[1], z_retval;
+        
+        ZVAL_STRING(&func_json_encode, "json_encode");
+        ZVAL_ZVAL(&json_encode_params[0],retval,1,1);
+
+        call_user_function(NULL,NULL,&func_json_encode,&z_retval,1,json_encode_params);
+
+        php_printf("%s",ZSTR_VAL(Z_STR(z_retval)));
+    }
+
 }

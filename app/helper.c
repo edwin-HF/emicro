@@ -63,7 +63,7 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
     if (strlen(document) > 0)
     {
         regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
-        char *pattern = "@(\\w*?)\\(?([^\\)\\>]*?)?\\)?\\s*!?\\s*(\\w*)?";
+        char *pattern = "@(\\w*?)\\(?([^\\)\\!]*?)?\\)?\\s*!?\\s*(\\w*)?";
         regcomp(pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
 
         char *seek_ptr = document;
