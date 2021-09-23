@@ -59,23 +59,24 @@ void scan_dir(char *path, scan_callback callback){
 
 void _parse_annotation(char* document, parse_annotation_callback callback, void *callback_params, char *filter){
 
+    
     if (strlen(document) > 0)
     {
-
         regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
-        char *pattern = "@(\\w*?)\\(?([^\\)]*?)?\\)?";
+        char *pattern = "@(\\w*?)\\(?([^\\)\\>]*?)?\\)?\\s*!?\\s*(\\w*)?";
         regcomp(pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
 
         char *seek_ptr = document;
         char filter_annotation[MAXNAMLEN] = {0};
-        char filter_param[MAXNAMLEN] = {0};
+        char filter_param[MAXNAMLEN]      = {0};
+        char filter_position[MAXNAMLEN]   = {0};
 
         while (1)
         {
 
-            regmatch_t pmatch[3] = {};
-            size_t     nmatch = 3;
-            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
+            regmatch_t pmatch[4] = {};
+            size_t     nmatch = 4;
+            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,REG_EXTENDED);
 
             if (reg_ret != 0)
             {
@@ -84,6 +85,7 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
             
             char annotation[255] = {};
             char param[255]      = {};
+            char position[255]   = {};
 
             for (size_t i = 0; i < nmatch; i++)
             {
@@ -98,6 +100,10 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
                     {
                         param[bi] = seek_ptr[j];
                     }
+                    if (i == 3)
+                    {
+                        position[bi] = seek_ptr[j];
+                    }
                     bi++;
                 }
 
@@ -106,12 +112,13 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
 
             if (filter == NULL)
             {
-                callback(annotation,param,callback_params);
+                callback(annotation,param,position,callback_params);
             }else{
                 if (strcmp(annotation,filter) == 0)
                 {
                     strcpy(filter_annotation,annotation);
                     strcpy(filter_param,param);
+                    strcpy(filter_position,position);
                 }
             }
             
@@ -122,15 +129,13 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
 
         if (filter != NULL)
         {
-            callback(filter_annotation,filter_param,callback_params);
+            callback(filter_annotation,filter_param,filter_position,callback_params);
         }
-        
 
         regfree (pattern_compiled);
 
-    }else
-    {
-        callback("","",callback_params);
+    }else{
+        callback("","","",callback_params);
     }
     
 

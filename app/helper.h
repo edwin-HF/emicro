@@ -8,7 +8,7 @@
         _parse_annotation(document, callback, callback_params, filter)
 
 typedef void (*scan_callback)(char *file);
-typedef void (*parse_annotation_callback)(char *annotation, char *annotation_param, void *params);
+typedef void (*parse_annotation_callback)(char *annotation, char *annotation_param, char *position, void *params);
 typedef void* (*explode_callback)(char *a_str,size_t a_str_len);
 
 char* replace(zval* str, char *find, char *replace);

@@ -16,6 +16,8 @@
 #include "app/application.h"
 #include "app/dispatcher.h"
 #include "app/request.h"
+// #include "app/db.h"
+// #include "app/model.h"
 
 ZEND_DECLARE_MODULE_GLOBALS(emicro);
 
@@ -135,7 +137,9 @@ PHP_MINIT_FUNCTION(emicro){
 	init_global();
 
 	EMICRO_STARTUP(application);
+	EMICRO_STARTUP(dispatcher);
 	EMICRO_STARTUP(request);
+	// EMICRO_STARTUP(model);
 
 	return SUCCESS;
 
