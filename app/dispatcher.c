@@ -376,6 +376,7 @@ void dispatcher(){
     annotation_run(&called_method_after,retval);
     annotation_run(&called_class_after,retval);
 
+    dispatcher_return(retval);
     efree(retval);
 }
 
