@@ -236,7 +236,9 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
     {
         strcpy(c_router,annotation_param);
     }else{
-        strcpy(c_router,class);
+        char *r_class = reg_replace(class,"[\\]{1}","/");
+        strcpy(c_router,r_class);
+        efree(r_class);
     }
 
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(doc),method_obj){
@@ -287,25 +289,34 @@ void scan_cb_dispatcher(char *file){
     // php_printf("last modify time %s\n",ctime(&buf.st_mtim));
     
 
-    char* filename = basename(file);
-    char class[MAXNAMLEN] = {0};
-    char nsController[MAXNAMLEN] = {0};
-    strncpy(class,filename,strlen(filename) - 4);
+    // char* filename = basename(file);
+
     zval app_obj,*c_rv;
     emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
-
     zval *z_controller = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
 
     char *ns = ZSTR_VAL(Z_STR_P(z_controller));
 
+    char pattern[255];
+    php_sprintf(pattern,".*%s/",ns);
+
+    char *filename = reg_replace(file,pattern,"");
+    char *ns_class = reg_replace(filename,"/","\\");
+
+    char class[MAXNAMLEN] = {0};
+    char nsController[MAXNAMLEN] = {0};
+    strncpy(class,ns_class,strlen(filename) - 4);
+
     php_sprintf(nsController,"%s\\%s",ns, class);
+    
 
     char *class_document = ref_class_doc(nsController);
 
     char* router[2] = {ns,class};
 
     parse_annotation_filter(class_document,annotation_cb_dispatcher_class,router,"Controller");
-
+    
+    efree(filename);
 }
 
 void init_router_map(){

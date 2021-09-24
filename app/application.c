@@ -166,7 +166,7 @@ PHP_METHOD(emicro_application, run){
     init_config();
     init_router_map();
     dispatcher();
-
+    
 }
 
 void print_g(){

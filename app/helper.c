@@ -25,6 +25,51 @@ char* replace(zval* str, char *find, char *replace){
 
 }
 
+char* reg_replace(const char *str, char *pattern, char *replace){
+
+    char *seek_ptr = str;
+    char *str_replace = (char*)emalloc(sizeof(char) * 65536);
+    memset(str_replace,0,sizeof(str_replace));
+
+    regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
+    
+    regcomp(pattern_compiled,pattern,REG_EXTENDED);
+    size_t size_replace = 0;
+
+    while (1)
+    {
+
+        size_t size_replace = strlen(str_replace);
+        regmatch_t pmatch[1] = {};
+        size_t     nmatch = 1;
+
+        int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
+
+        if (reg_ret != REG_NOERROR || reg_ret == REG_NOMATCH)
+        {
+            char tmp[MAXPATHLEN] = {0};
+            for (size_t idx = 0; idx < strlen(seek_ptr); idx++)
+            {
+                tmp[idx] = seek_ptr[idx];
+            }
+            strcat(str_replace,tmp);
+            break;
+        }
+
+        for (size_t idx = 0; idx < pmatch[0].rm_so; idx++)
+        {
+            str_replace[size_replace++] = seek_ptr[idx];
+        }
+
+        strcat(str_replace,replace);
+
+        seek_ptr += pmatch[0].rm_eo;
+    }
+
+    return str_replace;
+
+}
+
 void scan_dir(char *path, scan_callback callback){
 
     DIR *dir;
@@ -76,7 +121,7 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
 
             regmatch_t pmatch[4] = {};
             size_t     nmatch = 4;
-            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,REG_EXTENDED);
+            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
 
             if (reg_ret != 0)
             {
