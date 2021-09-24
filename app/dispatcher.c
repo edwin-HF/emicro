@@ -232,7 +232,7 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
 
     char c_router[MAXNAMLEN] = {0};
 
-    if (strcmp(annotation,"Controller") == 0)
+    if (strcmp(annotation,"Route") == 0)
     {
         strcpy(c_router,annotation_param);
     }else{
@@ -289,7 +289,6 @@ void scan_cb_dispatcher(char *file){
     // php_printf("last modify time %s\n",ctime(&buf.st_mtim));
     
 
-    // char* filename = basename(file);
 
     zval app_obj,*c_rv;
     emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
@@ -309,14 +308,14 @@ void scan_cb_dispatcher(char *file){
 
     php_sprintf(nsController,"%s\\%s",ns, class);
     
-
     char *class_document = ref_class_doc(nsController);
 
     char* router[2] = {ns,class};
 
-    parse_annotation_filter(class_document,annotation_cb_dispatcher_class,router,"Controller");
+    parse_annotation_filter(class_document,annotation_cb_dispatcher_class,router,"Route");
     
     efree(filename);
+    efree(ns_class);
 }
 
 void init_router_map(){

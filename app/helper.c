@@ -28,7 +28,7 @@ char* replace(zval* str, char *find, char *replace){
 char* reg_replace(const char *str, char *pattern, char *replace){
 
     char *seek_ptr = str;
-    char *str_replace = (char*)emalloc(sizeof(char) * 65536);
+    char *str_replace = (char*)emalloc(sizeof(char) * MAXPATHLEN);
     memset(str_replace,0,sizeof(str_replace));
 
     regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
