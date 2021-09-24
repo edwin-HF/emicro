@@ -13,9 +13,11 @@
 
 #include "php_emicro.h"
 #include "app/helper.h"
+#include "app/annotation.h"
 #include "app/application.h"
 #include "app/dispatcher.h"
 #include "app/request.h"
+#include "app/factory.h"
 // #include "app/db.h"
 // #include "app/model.h"
 
@@ -139,7 +141,7 @@ PHP_MINIT_FUNCTION(emicro){
 	EMICRO_STARTUP(application);
 	EMICRO_STARTUP(dispatcher);
 	EMICRO_STARTUP(request);
-	// EMICRO_STARTUP(model);
+	EMICRO_STARTUP(factory);
 
 	return SUCCESS;
 
