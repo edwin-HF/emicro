@@ -20,57 +20,23 @@ ZEND_DECLARE_MODULE_GLOBALS(emicro);
 ZEND_BEGIN_ARG_INFO(arginfo_emicro_sayHello, 0)
 ZEND_END_ARG_INFO()
 
-PHP_METHOD(emicro_dispatcher, __construct){
-
-	zval* router = dispatchParams(TRACK_VARS_GET,"s");
-    char* str_router = Z_STRVAL_P(router);
-    char* delimiter = "/";
-    char* split_save_pointer;
-    char* split_str;
-    char* controller = NULL;
-    char* method = NULL;
-    while (NULL != (split_str = php_strtok_r(str_router,delimiter,&split_save_pointer)))
-    {
-        str_router = NULL;
-
-        if (controller == NULL)
-        {
-            controller = split_str;
-            continue;
-        }
-
-        if (method == NULL)
-        {
-            method = (split_str);
-            break;
-        }
-        
-    }
-
-}
-
-PHP_METHOD(emicro_dispatcher, moudle){
-
-}
-
 PHP_METHOD(emicro_dispatcher, controller){
+    zval *rv;
+    zval *retval = zend_read_property(emicro_dispatcher_ce,getThis(),ZEND_STRL(EMICRO_DISPATCHER_CONTROLLER),1,rv);
+
+    RETURN_ZVAL(retval,1,1);
 
 }
 
 PHP_METHOD(emicro_dispatcher, method){
-
-}
-
-PHP_METHOD(emicro_dispatcher, defaultNamespace){
-
-}
-
-PHP_METHOD(emicro_dispatcher, annotationNamespace){
-
+    zval *rv;
+    zval *retval = zend_read_property(emicro_dispatcher_ce,getThis(),ZEND_STRL(EMICRO_DISPATCHER_METHOD),1,rv);
+    RETURN_ZVAL(retval,1,1);
 }
 
 
 PHP_METHOD(emicro_dispatcher, getInstance){
+    
     ZEND_PARSE_PARAMETERS_NONE();
 
     zval *instance = zend_read_static_property(emicro_dispatcher_ce, ZEND_STRL(EMICRO_DISPATCHER_INSTANCE), 1);
@@ -86,17 +52,15 @@ PHP_METHOD(emicro_dispatcher, getInstance){
         return;
     }
 
-	zval func_construct;
-	ZVAL_STRING(&func_construct, "__construct");
-    call_user_function(NULL,instance,&func_construct,NULL,0,NULL);
-
 	zend_update_static_property(emicro_dispatcher_ce, ZEND_STRL(EMICRO_DISPATCHER_INSTANCE), instance);
 
     RETURN_ZVAL(instance,1,0);
 }
 
 zend_function_entry emicro_dispatcher_methods[] = {
-	PHP_ME(emicro_dispatcher, getInstance, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(emicro_dispatcher, getInstance, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+	PHP_ME(emicro_dispatcher, controller, NULL, ZEND_ACC_PUBLIC)
+	PHP_ME(emicro_dispatcher, method, NULL, ZEND_ACC_PUBLIC)
     PHP_FE_END
 
 };
@@ -114,8 +78,6 @@ EMICRO_MODULE_D(dispatcher) {
 	zend_declare_property_string(emicro_dispatcher_ce,ZEND_STRL(EMICRO_DISPATCHER_CONTROLLER),"",ZEND_ACC_PRIVATE);
 	zend_declare_property_string(emicro_dispatcher_ce,ZEND_STRL(EMICRO_DISPATCHER_METHOD),"",ZEND_ACC_PRIVATE);
 	zend_declare_property_bool(emicro_dispatcher_ce,ZEND_STRL(EMICRO_DISPATCHER_MULTI_MOUDLE),0,ZEND_ACC_PRIVATE);
-
-	emicro_dispatcher_ce = zend_register_internal_class( &emicro_dispatcher TSRMLS_CC);
 
 	return SUCCESS; 
 }
@@ -307,6 +269,12 @@ void dispatcher(){
 
     char *s_controller = ZSTR_VAL(Z_STR_P(z_controller));
     char *s_method     = ZSTR_VAL(Z_STR_P(z_method));
+
+    zval obj_dispatcher;
+    emicro_call_static_method(emicro_dispatcher_ce,"getInstance",&obj_dispatcher);
+
+    zend_update_property_string(emicro_dispatcher_ce,&obj_dispatcher,ZEND_STRL(EMICRO_DISPATCHER_CONTROLLER),s_controller);
+    zend_update_property_string(emicro_dispatcher_ce,&obj_dispatcher,ZEND_STRL(EMICRO_DISPATCHER_METHOD),s_method);
 
     zval called_class_before, called_class_after, called_method_before, called_method_after;
 

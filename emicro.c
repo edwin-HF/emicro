@@ -18,8 +18,6 @@
 #include "app/dispatcher.h"
 #include "app/request.h"
 #include "app/factory.h"
-// #include "app/db.h"
-// #include "app/model.h"
 
 ZEND_DECLARE_MODULE_GLOBALS(emicro);
 
