@@ -212,7 +212,7 @@ PHP_METHOD(emicro_request, post){
 	size_t key_len;
     zval* _default = NULL;
 
-	ZEND_PARSE_PARAMETERS_START(0, 1)
+	ZEND_PARSE_PARAMETERS_START(0, 2)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_STRING(key, key_len)
         Z_PARAM_ZVAL(_default)

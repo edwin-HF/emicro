@@ -58,6 +58,8 @@ PHP_METHOD(emicro_factory,call){
     annotation_run(&called_method_after,retval);
     annotation_run(&called_class_after,retval);
 
+    RETURN_ZVAL(retval,1,1);
+
 }
 
 

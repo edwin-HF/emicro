@@ -141,6 +141,8 @@ PHP_METHOD(emicro_application, getInstance){
         return;
     }
 
+    init_config();
+
 	zend_update_static_property(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), instance);
 
     RETURN_ZVAL(instance,1,0);
@@ -163,7 +165,6 @@ PHP_METHOD(emicro_application, run){
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
-    init_config();
     init_router_map();
     dispatcher();
     
