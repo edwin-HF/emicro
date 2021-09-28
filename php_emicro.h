@@ -26,7 +26,8 @@ ZEND_END_MODULE_GLOBALS (emicro)
 
 
 void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval);
-void z_dtor(zval *zv);
+void z_global_dtor(zval *zv);
+void z_dispatcher_dtor(zval *zv);
 
 extern ZEND_DECLARE_MODULE_GLOBALS(emicro);
 

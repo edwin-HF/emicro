@@ -89,7 +89,6 @@ void annotation_cb_dispatcher_method(char *annotation, char *annotation_param , 
     char *method   = router[2];
     char *file     = router[3];
     char router_path[MAXPATHLEN] = {0};
-    // char *router_path = (char*)pemalloc(sizeof(char) * MAXNAMLEN,1);
 
     if (strcmp(method,"__construct") == 0)
     {
@@ -107,7 +106,7 @@ void annotation_cb_dispatcher_method(char *annotation, char *annotation_param , 
     zval *z_router_map = (zval*)pemalloc(sizeof(zval),1);
     array_init(z_router_map);
     Z_ARR_P(z_router_map) = (HashTable*)pemalloc(sizeof(HashTable),1);
-    zend_hash_init(Z_ARR_P(z_router_map),0,NULL,NULL,1);
+    zend_hash_init(Z_ARR_P(z_router_map),0,NULL,z_dispatcher_dtor,1);
 
     zval *z_ns_class = (zval*)pemalloc(sizeof(zval),1);
     zend_string *zs_ns_class = zend_string_init(ns_class,strlen(ns_class),1);
@@ -144,7 +143,7 @@ void annotation_cb_dispatcher_method(char *annotation, char *annotation_param , 
         z_c_router = (zval*)pemalloc(sizeof(zval),1);
         array_init(z_c_router);
         Z_ARR_P(z_c_router) = (HashTable*)pemalloc(sizeof(HashTable),1);
-        zend_hash_init(Z_ARR_P(z_c_router),8,NULL,NULL,1);
+        zend_hash_init(Z_ARR_P(z_c_router),8,NULL,z_global_dtor,1);
     }
 
     zval *z_router_path = (zval*)pemalloc(sizeof(zval),1);
@@ -438,6 +437,7 @@ int8_t validate_dispatcher_cache(char *file,int64_t mt){
 
             }ZEND_HASH_FOREACH_END();
 
+            zend_hash_clean(Z_ARR_P(z_c_router));
 
         }
         

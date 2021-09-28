@@ -162,7 +162,7 @@ PHP_METHOD(emicro_application, run){
     ZVAL_STRING(&params[0], "EMicro\\Application::load");
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
-    
+    // print_g();
     init_router_map();
     dispatcher();
     

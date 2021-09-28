@@ -39,23 +39,83 @@ void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval)
 
 }
 
-void z_dtor(zval *zv)
+void emicro_hash_destory(HashTable *ht){
+	zend_string *key ;
+	zval *element;
+
+	if (HT_IS_INITIALIZED(ht)) {
+
+		if (ht->nNumUsed > 0)
+		{
+			php_printf("tt -- %d\n",(ht->nNumOfElements));
+			ZEND_HASH_FOREACH_STR_KEY_VAL(ht,key, element)
+			{
+				
+				// if (key) {
+				// 	// zend_string_release(key);
+				// 	// efree(key);
+				// }
+				// switch (Z_TYPE_P(element)) {
+				// 	case IS_STRING:
+				// 		zend_string_release(Z_STR_P(element));
+				// 		// efree(Z_STR_P(element));
+				// 		break;
+				// 	case IS_ARRAY:
+				// 		// emicro_hash_destory(Z_ARR_P(element));
+				// 		break;
+				// }
+				// ZVAL_UNDEF(element);
+			}ZEND_HASH_FOREACH_END();
+		}
+		
+
+
+	}
+	// efree(ht);
+}
+
+void z_global_dtor(zval *zv)
 {
 
-	// php_printf("destore HashTable\n");
-	// zval_dtor(zv);
+	switch(Z_TYPE_P(zv)){
+		case IS_STRING:
+			zend_string_release(Z_STR_P(zv));
+			break;
+		default:
+		break;
+	}
+	ZVAL_UNDEF(zv);
+
+}
+
+void z_dispatcher_dtor(zval *zv)
+{
+
+	switch(Z_TYPE_P(zv)){
+		case IS_STRING:
+			zend_string_release(Z_STR_P(zv));
+			break;
+		case IS_ARRAY:
+			zend_array_destroy(Z_ARR_P(zv));
+			break;
+		default:
+			
+		break;
+	}
+
+	ZVAL_UNDEF(zv);
 }
 
 static void init_global(){
 
 	EMICRO_G(router) = (HashTable*)pemalloc(sizeof(HashTable),1);
-	zend_hash_init(EMICRO_G(router),0,NULL,z_dtor,1);
+	zend_hash_init(EMICRO_G(router),0,NULL,z_global_dtor,1);
 
 	EMICRO_G(config) = (HashTable*)pemalloc(sizeof(HashTable),1);
-	zend_hash_init(EMICRO_G(config),0,NULL,z_dtor,1);
+	zend_hash_init(EMICRO_G(config),0,NULL,NULL,1);
 
 	EMICRO_G(file_router_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
-	zend_hash_init(EMICRO_G(file_router_mt),0,NULL,z_dtor,1);
+	zend_hash_init(EMICRO_G(file_router_mt),0,NULL,z_global_dtor,1);
 
 	EMICRO_G(i) = 1;
 }
@@ -92,10 +152,10 @@ void release_global(){
 		zend_hash_clean(EMICRO_G(router));
 	}
 
-	// if (EMICRO_G(config))
-	// {
-	// 	zend_hash_clean(EMICRO_G(config));
-	// }
+	if (EMICRO_G(config))
+	{
+		zend_hash_clean(EMICRO_G(config));
+	}
 	
 	if (EMICRO_G(file_router_mt))
 	{
@@ -169,10 +229,6 @@ PHP_RINIT_FUNCTION(emicro)
 }
 
 PHP_RSHUTDOWN_FUNCTION(emicro){
-	if (EMICRO_G(config))
-	{
-		zend_hash_clean(EMICRO_G(config));
-	}
 	return SUCCESS;
 }
 
