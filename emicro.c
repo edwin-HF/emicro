@@ -39,41 +39,6 @@ void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval)
 
 }
 
-void emicro_hash_destory(HashTable *ht){
-	zend_string *key ;
-	zval *element;
-
-	if (HT_IS_INITIALIZED(ht)) {
-
-		if (ht->nNumUsed > 0)
-		{
-			php_printf("tt -- %d\n",(ht->nNumOfElements));
-			ZEND_HASH_FOREACH_STR_KEY_VAL(ht,key, element)
-			{
-				
-				// if (key) {
-				// 	// zend_string_release(key);
-				// 	// efree(key);
-				// }
-				// switch (Z_TYPE_P(element)) {
-				// 	case IS_STRING:
-				// 		zend_string_release(Z_STR_P(element));
-				// 		// efree(Z_STR_P(element));
-				// 		break;
-				// 	case IS_ARRAY:
-				// 		// emicro_hash_destory(Z_ARR_P(element));
-				// 		break;
-				// }
-				// ZVAL_UNDEF(element);
-			}ZEND_HASH_FOREACH_END();
-		}
-		
-
-
-	}
-	// efree(ht);
-}
-
 void z_global_dtor(zval *zv)
 {
 
