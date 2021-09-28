@@ -15,8 +15,6 @@
 
 zend_class_entry * emicro_dispatcher_ce;
 
-ZEND_DECLARE_MODULE_GLOBALS(emicro);
-
 ZEND_BEGIN_ARG_INFO(arginfo_emicro_sayHello, 0)
 ZEND_END_ARG_INFO()
 
@@ -89,7 +87,9 @@ void annotation_cb_dispatcher_method(char *annotation, char *annotation_param , 
     char *r_router = router[0];
     char *ns_class = router[1];
     char *method   = router[2];
+    char *file     = router[3];
     char router_path[MAXPATHLEN] = {0};
+    // char *router_path = (char*)pemalloc(sizeof(char) * MAXNAMLEN,1);
 
     if (strcmp(method,"__construct") == 0)
     {
@@ -104,23 +104,68 @@ void annotation_cb_dispatcher_method(char *annotation, char *annotation_param , 
     }
 
     HashTable *ht = EMICRO_G(router);
-    zval z_router_map;
-    array_init(&z_router_map);
+    zval *z_router_map = (zval*)pemalloc(sizeof(zval),1);
+    array_init(z_router_map);
+    Z_ARR_P(z_router_map) = (HashTable*)pemalloc(sizeof(HashTable),1);
+    zend_hash_init(Z_ARR_P(z_router_map),0,NULL,NULL,1);
 
-    add_next_index_string(&z_router_map,ns_class);
-    add_next_index_string(&z_router_map,method);
+    zval *z_ns_class = (zval*)pemalloc(sizeof(zval),1);
+    zend_string *zs_ns_class = zend_string_init(ns_class,strlen(ns_class),1);
+    ZVAL_STR(z_ns_class,zs_ns_class);
 
-    zend_hash_str_update(ht,router_path,strlen(router_path),&z_router_map);
+    zval *z_method = (zval*)pemalloc(sizeof(zval),1);
+    zend_string *zs_method = zend_string_init(method,strlen(method),1);
+    ZVAL_STR(z_method,zs_method);
 
-    
+    add_next_index_zval(z_router_map,z_ns_class);
+    add_next_index_zval(z_router_map,z_method);
+
+    zend_hash_str_update(ht,router_path,strlen(router_path),z_router_map);
+
+
+    HashTable *ht_file_router_mt = EMICRO_G(file_router_mt);
+
+    zval *z_file_map = zend_hash_str_find(ht_file_router_mt,file,strlen(file));
+
+    if (z_file_map == NULL)
+    {
+        z_file_map = (zval*)pemalloc(sizeof(zval),1);
+        array_init(z_file_map);
+        Z_ARR_P(z_file_map) = (HashTable*)pemalloc(sizeof(HashTable),1);
+        zend_hash_init(Z_ARR_P(z_file_map),0,NULL,NULL,1);
+    }
+
+    add_assoc_long(z_file_map,"c_timestamp",time(NULL));
+
+    zval *z_c_router = zend_hash_str_find(Z_ARR_P(z_file_map),"c_router",strlen("c_router"));
+
+    if (z_c_router == NULL)
+    {
+        z_c_router = (zval*)pemalloc(sizeof(zval),1);
+        array_init(z_c_router);
+        Z_ARR_P(z_c_router) = (HashTable*)pemalloc(sizeof(HashTable),1);
+        zend_hash_init(Z_ARR_P(z_c_router),8,NULL,NULL,1);
+    }
+
+    zval *z_router_path = (zval*)pemalloc(sizeof(zval),1);
+    zend_string *zs_router_path = zend_string_init(router_path,strlen(router_path),1);
+    ZVAL_STR(z_router_path,zs_router_path);
+
+    add_next_index_zval(z_c_router,z_router_path);
+
+    add_assoc_zval(z_file_map,"c_router",z_c_router);
+
+    zend_hash_str_update(ht_file_router_mt,file,strlen(file),z_file_map);
+
 }
 
 void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, char *position, void *params){
 
     char **router = (char**)(params);
     char ns_class[MAXNAMLEN];
-    char *ns = router[0];
+    char *ns    = router[0];
     char *class = router[1];
+    char *file  = router[2];
     php_sprintf(ns_class,"%s\\%s",ns,class);
 
     zval reflection_class;
@@ -166,7 +211,7 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
         call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
 
         char *document = ZSTR_VAL(Z_STR(doc_method));
-        char *params[3];
+        char *params[4];
 
 
         if (Z_TYPE(doc_method) == IS_FALSE)
@@ -177,6 +222,7 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
         params[0] = c_router;
         params[1] = ns_class;
         params[2] = str_method;
+        params[3] = file;
 
         parse_annotation_filter(document,annotation_cb_dispatcher_method,params,"Route");
 
@@ -187,42 +233,46 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
 
 void scan_cb_dispatcher(char *file){
 
+    struct stat buf;
+    if (stat(file,&buf) != 0)
+    {
+        zend_throw_exception(NULL,"obtain file stat err",500);
+    }
 
-    // struct stat buf;
-    // if (stat(file,&buf) != 0)
-    // {
-    //     zend_throw_exception(NULL,"obtain file stat err",500);
-    // }
-    // php_printf("last modify time %s\n",ctime(&buf.st_mtim));
-    
+    int cached = validate_dispatcher_cache(file,buf.st_mtim.tv_sec);
 
+    // php_printf("%s -- validate res -- %d\n",file,cached);
 
-    zval app_obj,*c_rv;
-    emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
-    zval *z_controller = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
+    if (!cached)
+    {
+        zval app_obj,*c_rv;
+        emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
+        zval *z_controller = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
 
-    char *ns = ZSTR_VAL(Z_STR_P(z_controller));
+        char *ns = ZSTR_VAL(Z_STR_P(z_controller));
 
-    char pattern[255];
-    php_sprintf(pattern,".*%s/",ns);
+        char pattern[255];
+        php_sprintf(pattern,".*%s/",ns);
 
-    char *filename = reg_replace(file,pattern,"");
-    char *ns_class = reg_replace(filename,"/","\\");
+        char *filename = reg_replace(file,pattern,"");
+        char *ns_class = reg_replace(filename,"/","\\");
 
-    char class[MAXNAMLEN] = {0};
-    char nsController[MAXNAMLEN] = {0};
-    strncpy(class,ns_class,strlen(filename) - 4);
+        char class[MAXNAMLEN] = {0};
+        char nsController[MAXNAMLEN] = {0};
+        strncpy(class,ns_class,strlen(filename) - 4);
 
-    php_sprintf(nsController,"%s\\%s",ns, class);
-    
-    char *class_document = ref_class_doc(nsController);
+        php_sprintf(nsController,"%s\\%s",ns, class);
+        
+        char *class_document = ref_class_doc(nsController);
 
-    char* router[2] = {ns,class};
+        char* router[3] = {ns,class,file};
 
-    parse_annotation_filter(class_document,annotation_cb_dispatcher_class,router,"Route");
-    
-    efree(filename);
-    efree(ns_class);
+        parse_annotation_filter(class_document,annotation_cb_dispatcher_class,router,"Route");
+        
+        efree(filename);
+        efree(ns_class);
+    }
+
 }
 
 void init_router_map(){
@@ -347,7 +397,53 @@ void dispatcher_return(zval *retval){
 
         call_user_function(NULL,NULL,&func_json_encode,&z_retval,1,json_encode_params);
 
-        php_printf("%s",ZSTR_VAL(Z_STR(z_retval)));
+        if (Z_TYPE(z_retval) == IS_STRING)
+        {
+            php_printf("%s",ZSTR_VAL(Z_STR(z_retval)));
+        }
+
     }
+
+}
+
+int8_t validate_dispatcher_cache(char *file,int64_t mt){
+
+    HashTable *ht = EMICRO_G(file_router_mt);
+
+    zval *file_map = zend_hash_str_find(ht,file,strlen(file));
+
+    if (file_map == NULL)
+    {
+
+        return 0;
+    }
+
+    zval *c_time = zend_hash_str_find(Z_ARR_P(file_map),"c_timestamp",strlen("c_timestamp"));
+
+    if (mt > Z_LVAL_P(c_time))
+    {
+
+        HashTable *ht_router = EMICRO_G(router);
+
+        zval *z_c_router = zend_hash_str_find(Z_ARR_P(file_map),"c_router",strlen("c_router"));
+
+        if (z_c_router != NULL)
+        {
+
+            zval *cur_item;
+            ZEND_HASH_FOREACH_VAL(Z_ARR_P(z_c_router),cur_item){
+
+                char *key = ZSTR_VAL(Z_STR_P(cur_item));
+                zend_hash_str_del(ht_router,key,strlen(key));
+
+            }ZEND_HASH_FOREACH_END();
+
+
+        }
+        
+        return 0;
+    }
+    
+    return 1;
 
 }

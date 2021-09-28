@@ -17,6 +17,8 @@ ZEND_TSRMLS_CACHE_EXTERN()
 ZEND_BEGIN_MODULE_GLOBALS (emicro)
     HashTable *router;
     HashTable *config;
+    HashTable *file_router_mt;
+    int i;
 ZEND_END_MODULE_GLOBALS (emicro)
 
 #define EMICRO_MODULE_D(module) int emicro_##module()
@@ -25,5 +27,7 @@ ZEND_END_MODULE_GLOBALS (emicro)
 
 void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval);
 void z_dtor(zval *zv);
+
+extern ZEND_DECLARE_MODULE_GLOBALS(emicro);
 
 #endif	/* PHP_EMICRO_H */

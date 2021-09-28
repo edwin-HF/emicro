@@ -20,5 +20,6 @@ void annotation_cb_dispatcher(char *annotation, char *annotation_param, char *po
 
 zval* call_dispatcher(char *class, char *method);
 void dispatcher_return(zval *retval);
+int8_t validate_dispatcher_cache(char *file, int64_t mt);
 
 #endif

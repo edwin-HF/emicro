@@ -41,17 +41,23 @@ void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval)
 
 void z_dtor(zval *zv)
 {
+
+	// php_printf("destore HashTable\n");
 	// zval_dtor(zv);
 }
 
 static void init_global(){
 
 	EMICRO_G(router) = (HashTable*)pemalloc(sizeof(HashTable),1);
-	zend_hash_init(EMICRO_G(router),8,NULL,z_dtor,1);
+	zend_hash_init(EMICRO_G(router),0,NULL,z_dtor,1);
 
 	EMICRO_G(config) = (HashTable*)pemalloc(sizeof(HashTable),1);
-	zend_hash_init(EMICRO_G(config),8,NULL,z_dtor,1);
+	zend_hash_init(EMICRO_G(config),0,NULL,z_dtor,1);
 
+	EMICRO_G(file_router_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(EMICRO_G(file_router_mt),0,NULL,z_dtor,1);
+
+	EMICRO_G(i) = 1;
 }
 
 void* config_callback(char **a_str, size_t len){
@@ -86,9 +92,14 @@ void release_global(){
 		zend_hash_clean(EMICRO_G(router));
 	}
 
-	if (EMICRO_G(config))
+	// if (EMICRO_G(config))
+	// {
+	// 	zend_hash_clean(EMICRO_G(config));
+	// }
+	
+	if (EMICRO_G(file_router_mt))
 	{
-		zend_hash_clean(EMICRO_G(config));
+		zend_hash_clean(EMICRO_G(file_router_mt));
 	}
 	
 }
@@ -154,17 +165,19 @@ PHP_RINIT_FUNCTION(emicro)
 #if defined(ZTS) && defined(COMPILE_DL_EMICRO)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
-
 	return SUCCESS;
 }
 
 PHP_RSHUTDOWN_FUNCTION(emicro){
-	release_global();
+	if (EMICRO_G(config))
+	{
+		zend_hash_clean(EMICRO_G(config));
+	}
 	return SUCCESS;
 }
 
 PHP_MSHUTDOWN_FUNCTION(emicro){
-	
+	release_global();
 	return SUCCESS;
 }
 /* }}} */

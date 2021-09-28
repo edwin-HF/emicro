@@ -16,8 +16,6 @@
 
 zend_class_entry * emicro_application_ce;
 
-ZEND_DECLARE_MODULE_GLOBALS(emicro);
-
 ZEND_BEGIN_ARG_INFO(arginfo_application_dispatcherNamespace, 0)
     ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
@@ -164,7 +162,7 @@ PHP_METHOD(emicro_application, run){
     ZVAL_STRING(&params[0], "EMicro\\Application::load");
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
-
+    
     init_router_map();
     dispatcher();
     
@@ -172,18 +170,33 @@ PHP_METHOD(emicro_application, run){
 
 void print_g(){
 
+    php_printf("global i = %d\n",EMICRO_G(i));
+    EMICRO_G(i) = EMICRO_G(i) + 1;
+
     zend_string *cur_key;
     zval *cur_val;
-    ZEND_HASH_FOREACH_STR_KEY_VAL(EMICRO_G(router),cur_key,cur_val){
+    ZEND_HASH_FOREACH_STR_KEY_VAL(EMICRO_G(file_router_mt),cur_key,cur_val){
 
         zend_string *key;
         zval *cur_v;
 
         php_printf("\n %s --> ",cur_key->val);
+        php_printf("type -- %d\n",Z_TYPE_P(cur_val));
+        php_printf("count -- %d\n",Z_ARR_P(cur_val)->nNumUsed);
 
-        ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARR_P(cur_val),key,cur_v){
 
-            php_printf(" %s ",ZSTR_VAL(Z_STR_P(cur_v)));
+        zval *timestamp = zend_hash_str_find(Z_ARR_P(cur_val),"c_timestamp",strlen("c_timestamp"));
+
+        php_printf("time -- %d\n",Z_LVAL_P(timestamp));
+
+        zval *z_router = zend_hash_str_find(Z_ARR_P(cur_val),"c_router",strlen("c_router"));
+// php_printf(" %ld \n",ZSTR_VAL(Z_STR_P(timestamp)));
+        ZEND_HASH_FOREACH_VAL(Z_ARR_P(z_router),cur_v){
+
+            php_printf("router -- %s\n",ZSTR_VAL(Z_STR_P(cur_v)));
+            // php_printf("ccc -- \n");
+            // php_printf(" %ld \n",ZSTR_VAL(Z_STR_P(cur_v)));
+            // php_printf(" %s ",ZSTR_VAL(Z_STR_P(cur_v)));
 
         }ZEND_HASH_FOREACH_END();
 
