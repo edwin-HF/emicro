@@ -22,14 +22,14 @@ PHP_METHOD(emicro_dispatcher, controller){
     zval *rv;
     zval *retval = zend_read_property(emicro_dispatcher_ce,getThis(),ZEND_STRL(EMICRO_DISPATCHER_CONTROLLER),1,rv);
 
-    RETURN_ZVAL(retval,1,1);
+    RETURN_ZVAL(retval,0,1);
 
 }
 
 PHP_METHOD(emicro_dispatcher, method){
     zval *rv;
     zval *retval = zend_read_property(emicro_dispatcher_ce,getThis(),ZEND_STRL(EMICRO_DISPATCHER_METHOD),1,rv);
-    RETURN_ZVAL(retval,1,1);
+    RETURN_ZVAL(retval,0,1);
 }
 
 
@@ -41,7 +41,7 @@ PHP_METHOD(emicro_dispatcher, getInstance){
 
     if (Z_TYPE_P(instance) == IS_OBJECT)
     {
-        RETURN_ZVAL(instance,1,0);
+        RETURN_ZVAL(instance,0,1);
     }
 
     if (object_init_ex(instance,emicro_dispatcher_ce) == FAILURE)
@@ -52,7 +52,7 @@ PHP_METHOD(emicro_dispatcher, getInstance){
 
 	zend_update_static_property(emicro_dispatcher_ce, ZEND_STRL(EMICRO_DISPATCHER_INSTANCE), instance);
 
-    RETURN_ZVAL(instance,1,0);
+    RETURN_ZVAL(instance,0,1);
 }
 
 zend_function_entry emicro_dispatcher_methods[] = {

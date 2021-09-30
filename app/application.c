@@ -72,7 +72,7 @@ PHP_METHOD(emicro_application, getAppPath){
     retval = zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
 
 
-    RETURN_ZVAL(retval,1,1);
+    RETURN_ZVAL(retval,0,1);
 
 }
 
@@ -130,7 +130,7 @@ PHP_METHOD(emicro_application, getInstance){
 
     if (Z_TYPE_P(instance) == IS_OBJECT)
     {
-        RETURN_ZVAL(instance,1,0);
+        RETURN_ZVAL(instance,0,1);
     }
 
     if (object_init_ex(instance,emicro_application_ce) == FAILURE)
@@ -143,7 +143,7 @@ PHP_METHOD(emicro_application, getInstance){
 
 	zend_update_static_property(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), instance);
 
-    RETURN_ZVAL(instance,1,0);
+    RETURN_ZVAL(instance,0,1);
 }
 
 PHP_METHOD(emicro_application, run){
@@ -162,7 +162,7 @@ PHP_METHOD(emicro_application, run){
     ZVAL_STRING(&params[0], "EMicro\\Application::load");
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
-    // print_g();
+    
     init_router_map();
     dispatcher();
     
