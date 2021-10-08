@@ -60,6 +60,8 @@ PHP_METHOD(emicro_factory,call){
 
     RETURN_ZVAL(retval,0,1);
 
+    pefree(retval,0);
+
 }
 
 
@@ -99,7 +101,7 @@ zval* call_method(char *class, char *method, zval *m_params){
     zval func_construct, construct_retval;
     zval controllerMethod, *retval, params[50];
 
-    retval = (zval*)emalloc(sizeof(zval));
+    retval = (zval*)pemalloc(sizeof(zval),0);
     
     ZVAL_STRING(&controllerMethod, method);
 

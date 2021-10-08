@@ -8,10 +8,9 @@
 
 extern zend_class_entry * emicro_application_ce;
 
-char* root_path();
-char* app_path();
 zval* load(char *path);
 void init_config();
+int8_t validate_config_cache(char *file,int64_t mt);
 
 EMICRO_MODULE_D(application);
 

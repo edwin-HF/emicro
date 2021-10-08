@@ -187,9 +187,9 @@ void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, ch
     {
         strcpy(c_router,annotation_param);
     }else{
-        char *r_class = reg_replace(class,"[\\]{1}","/");
+        char r_class[MAXPATHLEN] = {0};
+        reg_replace(class,"[\\]{1}","/",r_class);
         strcpy(c_router,r_class);
-        efree(r_class);
     }
 
     ZEND_HASH_FOREACH_VAL(Z_ARRVAL(doc),method_obj){
@@ -244,6 +244,7 @@ void scan_cb_dispatcher(char *file){
 
     if (!cached)
     {
+
         zval app_obj,*c_rv;
         emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
         zval *z_controller = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),1,c_rv);
@@ -253,8 +254,11 @@ void scan_cb_dispatcher(char *file){
         char pattern[255];
         php_sprintf(pattern,".*%s/",ns);
 
-        char *filename = reg_replace(file,pattern,"");
-        char *ns_class = reg_replace(filename,"/","\\");
+        char filename[MAXPATHLEN] = {0};
+        char ns_class[MAXPATHLEN] = {0};
+
+        reg_replace(file,pattern,"",filename);
+        reg_replace(filename,"/","\\",ns_class);
 
         char class[MAXNAMLEN] = {0};
         char nsController[MAXNAMLEN] = {0};
@@ -268,8 +272,6 @@ void scan_cb_dispatcher(char *file){
 
         parse_annotation_filter(class_document,annotation_cb_dispatcher_class,router,"Route");
         
-        efree(filename);
-        efree(ns_class);
     }
 
 }
@@ -349,7 +351,7 @@ void dispatcher(){
     annotation_run(&called_class_after,retval);
 
     dispatcher_return(retval);
-    efree(retval);
+    pefree(retval,0);
 }
 
 
@@ -374,7 +376,7 @@ zval* call_dispatcher(char *class, char *method){
     zval func_construct, construct_retval;
     zval controllerMethod, *retval, params[1];
 
-    retval = (zval*)emalloc(sizeof(zval));
+    retval = (zval*)pemalloc(sizeof(zval),0);
     
     ZVAL_STRING(&controllerMethod, method);
     ZVAL_ZVAL(&params[0],&obj_request,1,1);

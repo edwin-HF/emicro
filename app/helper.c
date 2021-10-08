@@ -25,15 +25,15 @@ char* replace(zval* str, char *find, char *replace){
 
 }
 
-char* reg_replace(const char *str, char *pattern, char *replace){
+void reg_replace(const char *str, char *pattern, char *replace, char* str_replace){
 
     char *seek_ptr = str;
-    char *str_replace = (char*)emalloc(sizeof(char) * MAXPATHLEN);
-    memset(str_replace,0,sizeof(str_replace));
+    // char str_replace[MAXPATHLEN]={0};
+    // memset(str_replace,0,sizeof(str_replace));
 
-    regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
+    regex_t pattern_compiled;
     
-    regcomp(pattern_compiled,pattern,REG_EXTENDED);
+    regcomp(&pattern_compiled,pattern,REG_EXTENDED);
     size_t size_replace = 0;
 
     while (1)
@@ -43,7 +43,7 @@ char* reg_replace(const char *str, char *pattern, char *replace){
         regmatch_t pmatch[1] = {};
         size_t     nmatch = 1;
 
-        int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
+        int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
 
         if (reg_ret != REG_NOERROR || reg_ret == REG_NOMATCH)
         {
@@ -66,7 +66,7 @@ char* reg_replace(const char *str, char *pattern, char *replace){
         seek_ptr += pmatch[0].rm_eo;
     }
 
-    return str_replace;
+    regfree(&pattern_compiled);
 
 }
 
@@ -107,9 +107,9 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
     
     if (strlen(document) > 0)
     {
-        regex_t *pattern_compiled = (regex_t*)emalloc(sizeof(regex_t));
+        regex_t pattern_compiled;
         char *pattern = "@(\\w*?)\\(?([^\\)\\!]*?)?\\)?\\s*!?\\s*(\\w*)?";
-        regcomp(pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
+        regcomp(&pattern_compiled,pattern,REG_EXTENDED|REG_NEWLINE);
 
         char *seek_ptr = document;
         char filter_annotation[MAXNAMLEN] = {0};
@@ -121,7 +121,7 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
 
             regmatch_t pmatch[4] = {};
             size_t     nmatch = 4;
-            int reg_ret = regexec(pattern_compiled,seek_ptr,nmatch,pmatch,0);
+            int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
 
             if (reg_ret != 0)
             {
@@ -177,7 +177,7 @@ void _parse_annotation(char* document, parse_annotation_callback callback, void 
             callback(filter_annotation,filter_param,filter_position,callback_params);
         }
 
-        regfree (pattern_compiled);
+        regfree (&pattern_compiled);
 
     }else{
         callback("","","",callback_params);

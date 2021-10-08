@@ -18,6 +18,9 @@ ZEND_BEGIN_MODULE_GLOBALS (emicro)
     HashTable *router;
     HashTable *config;
     HashTable *file_router_mt;
+    HashTable *file_config_mt;
+    char *root_path;
+    char *app_path;
     int i;
 ZEND_END_MODULE_GLOBALS (emicro)
 
@@ -28,6 +31,7 @@ ZEND_END_MODULE_GLOBALS (emicro)
 void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval);
 void z_global_dtor(zval *zv);
 void z_dispatcher_dtor(zval *zv);
+zval* emicro_arr_deep_dup(zval *source);
 
 extern ZEND_DECLARE_MODULE_GLOBALS(emicro);
 

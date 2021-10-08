@@ -113,13 +113,17 @@ PHP_METHOD(emicro_application, load){
 
     char *realpath  = Z_STRVAL_P(app_path);
     char *classPath = replace(class,"\\","/");
-    char *className = emalloc(MAXPATHLEN);
+    char className[MAXPATHLEN] = {0};
 
     php_sprintf(className,"%s/%s.php",realpath,classPath);
 
-    load(className);
+    zval *retval = load(className);
 
-    efree(className);
+    if (retval != NULL)
+    {
+        pefree(retval,0);
+    }
+    
 
 }
 
@@ -139,6 +143,17 @@ PHP_METHOD(emicro_application, getInstance){
         return;
     }
 
+    char appPath[MAXPATHLEN] = {0};
+
+    if (strlen(EMICRO_G(root_path)) == 0)
+    {
+        EMICRO_G(root_path) = VCWD_GETCWD(EMICRO_G(root_path),MAXPATHLEN);
+        reg_replace(EMICRO_G(root_path),"public","application",appPath);
+        memcpy(EMICRO_G(app_path),appPath,sizeof(appPath));
+    }
+
+    zend_update_static_property_string(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),EMICRO_G(app_path));
+
     init_config();
 
 	zend_update_static_property(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), instance);
@@ -153,10 +168,6 @@ PHP_METHOD(emicro_application, run){
     zval func_name;
     zval func_autoload;
     zval params[1],ret;
-
-    char *appPath = app_path();
-
-    zend_update_static_property_string(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),appPath);
 
     ZVAL_STRING(&func_name, "spl_autoload_register");
     ZVAL_STRING(&params[0], "EMicro\\Application::load");
@@ -204,27 +215,12 @@ void print_g(){
 
 }
 
-char* app_path(){
-
-    zval str;
-    ZVAL_STRING(&str,root_path());
-
-    return replace(&str,"public","application");
-
-}
-
-char* root_path(){
-    char* root;
-    root = VCWD_GETCWD(root,MAXPATHLEN);
-    return root;
-}
-
 zval* load(char *path) {
 
     if (access(path,F_OK) != -1)
     {
         zend_file_handle file_handle;
-        zval *retval = (zval*)emalloc(sizeof(zval));
+        zval *retval = (zval*)pemalloc(sizeof(zval),0);
 
         zend_stream_init_filename(&file_handle, path);
         php_execute_simple_script(&file_handle,retval);
@@ -238,27 +234,50 @@ zval* load(char *path) {
 
 void scan_cb_config(char* file){
 
+    struct stat buf;
+    if (stat(file,&buf) != 0)
+    {
+        zend_throw_exception(NULL,"obtain config file stat err",500);
+    }
+
     char *filename = basename(file);
     char config[MAXNAMLEN] = {0};
     strncpy(config,filename,strlen(filename) - 4);
 
-    zval *z_config = load(file);
+    int cached = validate_config_cache(config,buf.st_mtim.tv_sec);
 
-    zend_string *key;
-    zval *curr_item;
+    if (!cached)
+    {
 
-    HashTable *ht_config = EMICRO_G(config);
+        zval *z_config = load(file);
 
-    zend_hash_str_update(ht_config,config,strlen(config),z_config);
+        zend_string *key;
+        zval *curr_item;
+
+        HashTable *ht_config = EMICRO_G(config);
+
+        zval *zc_config = emicro_arr_deep_dup(z_config);
+        
+        zend_hash_str_update(ht_config,config,strlen(config),zc_config);
+
+
+        HashTable *ht_config_mt = EMICRO_G(file_config_mt);
+
+        zval z_now;
+        ZVAL_LONG(&z_now,time(NULL));
+
+        zend_hash_str_update(ht_config_mt,config,strlen(config),&z_now);
+        
+        pefree(z_config,0);
+
+    }
 
 }
 
 void init_config(){
-    char *path =  app_path();
+    
     char config_path[MAXPATHLEN];
-
-    php_sprintf(config_path,"%s/config",path);
-
+    php_sprintf(config_path,"%s/config",EMICRO_G(app_path));
     scan_dir(config_path,scan_cb_config);
 
 }
@@ -290,4 +309,29 @@ EMICRO_MODULE_D(application) {
 	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_APP_PATH),"", ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 
 	return SUCCESS; // @suppress("Symbol is not resolved")
+}
+
+int8_t validate_config_cache(char *file,int64_t mt){
+
+    HashTable *ht = EMICRO_G(file_config_mt);
+
+    zval *c_time = zend_hash_str_find(ht,file,strlen(file));
+
+    if (c_time == NULL)
+    {
+        return 0;
+    }
+
+    if (mt > Z_LVAL_P(c_time))
+    {
+
+        HashTable *ht_config = EMICRO_G(config);
+
+        zend_hash_str_del(ht_config,file,strlen(file));
+
+        return 0;
+    }
+    
+    return 1;
+
 }

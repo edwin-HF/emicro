@@ -31,11 +31,11 @@ ZEND_DECLARE_MODULE_GLOBALS(emicro);
 void emicro_call_static_method(zend_class_entry *ce, char* method, zval *retval){
 
     zval z_func;
-    char *str_func = emalloc(MAXPATHLEN);
+    char *str_func = pemalloc(MAXPATHLEN,0);
     php_sprintf(str_func,"%s::%s",ZSTR_VAL(ce->name),method);
     ZVAL_STRING(&z_func,str_func);
     call_user_function(NULL,NULL,&z_func,retval,0,NULL);
-    efree(str_func);
+    pefree(str_func,0);
 
 }
 
@@ -46,9 +46,11 @@ void z_global_dtor(zval *zv)
 		case IS_STRING:
 			zend_string_release(Z_STR_P(zv));
 			break;
+			break;
 		default:
 		break;
 	}
+
 	ZVAL_UNDEF(zv);
 
 }
@@ -82,17 +84,23 @@ static void init_global(){
 	EMICRO_G(file_router_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
 	zend_hash_init(EMICRO_G(file_router_mt),0,NULL,z_global_dtor,1);
 
-	EMICRO_G(i) = 1;
+	EMICRO_G(file_config_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(EMICRO_G(file_config_mt),0,NULL,NULL,1);
+
+	EMICRO_G(root_path) = (char*)pemalloc(sizeof(char)*MAXPATHLEN,1);
+	EMICRO_G(app_path)  = (char*)pemalloc(sizeof(char)*MAXPATHLEN,1);
+	memset(EMICRO_G(root_path),0,sizeof(EMICRO_G(root_path)));
+	memset(EMICRO_G(app_path),0,sizeof(EMICRO_G(app_path)));
+
+	EMICRO_G(i) = 0;
 }
 
 void* config_callback(char **a_str, size_t len){
 
 	HashTable *ht_config = EMICRO_G(config);
-
 	char *ht_config_key = a_str[0];
 
 	zval *ret = zend_hash_str_find(ht_config,ht_config_key,strlen(ht_config_key));
-
 
 	if (ret != NULL)
 	{
@@ -126,7 +134,76 @@ void release_global(){
 	{
 		zend_hash_clean(EMICRO_G(file_router_mt));
 	}
+
+	if (EMICRO_G(file_config_mt))
+	{
+		zend_hash_clean(EMICRO_G(file_config_mt));
+	}
+
+	if (EMICRO_G(root_path))
+	{
+		pefree(EMICRO_G(root_path),1);
+	}
+
+	if (EMICRO_G(app_path))
+	{
+		pefree(EMICRO_G(app_path),1);
+	}
 	
+}
+
+zval* emicro_arr_deep_dup(zval *source){
+
+	zval *target = (zval*)pemalloc(sizeof(zval),1);
+	array_init(target); 
+	Z_ARR_P(target) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(Z_ARR_P(target),0,NULL,z_global_dtor,1);
+
+	zval *cur_item;
+	zend_string *cur_key;
+
+	ZEND_HASH_FOREACH_STR_KEY_VAL(Z_ARR_P(source),cur_key,cur_item){
+
+		zval *z_val, *z_arr, *z_key;
+
+		if (cur_key)
+		{
+			z_key = (zval*)pemalloc(sizeof(zval),1);
+			ZVAL_PSTRING(z_key,ZSTR_VAL(cur_key));
+		}
+
+		switch (Z_TYPE_P(cur_item))
+		{
+			case IS_ARRAY:
+					z_arr = emicro_arr_deep_dup(cur_item);
+					zend_hash_update(Z_ARR_P(target),Z_STR_P(z_key),z_arr);
+					goto end;
+				break;
+
+			case IS_STRING:
+					z_val = (zval*)pemalloc(sizeof(zval),1);
+					ZVAL_PSTRING(z_val,ZSTR_VAL(Z_STR_P(cur_item)));
+				break;
+
+			default:
+					z_val = (zval*)pemalloc(sizeof(zval),1);
+					ZVAL_ZVAL(z_val,cur_item,1,1);
+				break;
+		}
+
+		if (cur_key)
+		{
+			zend_hash_update(Z_ARR_P(target),Z_STR_P(z_key),z_val);
+		}else{
+			add_next_index_zval(target,z_val);
+		}
+
+		
+	}ZEND_HASH_FOREACH_END();
+
+end:
+	return target;
+
 }
 
 /* }}} */
@@ -159,7 +236,7 @@ PHP_FUNCTION(config)
 		}
 		
 	}else{
-		RETURN_ZVAL(retval,0,1);
+		RETURN_ZVAL(retval,1,0);
 	}
 
 }
@@ -190,6 +267,8 @@ PHP_RINIT_FUNCTION(emicro)
 #if defined(ZTS) && defined(COMPILE_DL_EMICRO)
 	ZEND_TSRMLS_CACHE_UPDATE();
 #endif
+
+	EMICRO_G(i) = EMICRO_G(i) + 1;
 	return SUCCESS;
 }
 
