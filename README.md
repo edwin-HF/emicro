@@ -157,9 +157,23 @@
 ```
 
 ```
-    全局函数 function config($param = '',$default=''){}
+    1 全局函数 function config($param = '',$default=''){}
 
-    内置注解 @Route(value),应用与控制器类和方法，如果不设置则默认使用【控制器类名称/控制器方法名称】
+        访问格式 filename.key1.key2
+        例子：
+        application/config/system.php
+
+        <?php
+
+        return [
+            'page_size' => 12
+        ]; 
+
+        项目中使用 config('system.page_size');
+        就能获取到page_size了，支持默认值，如果没有设置则返回默认值。
+
+
+    2 内置注解 @Route(value),应用与控制器类和方法，如果不设置则默认使用【控制器类名称/控制器方法名称】
 
 ```
 * 自定义注解
@@ -302,3 +316,6 @@ class Index
 </h1>
 
 ```
+
+    那么，接下来可以正真愉快的玩耍了，不要慌，注解路由和配置文件解析已缓存在php-fpm进程中...
+
