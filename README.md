@@ -267,7 +267,7 @@ class Index
      */
     public function index(Request $request){
 
-        return  [
+        $user = [
             [
                 'id'   => 1,
                 'name' => 'LiSi',
@@ -279,6 +279,8 @@ class Index
                 'age'  => 13
             ],
         ];
+
+        return ['user' => $user];
 
     }
 
