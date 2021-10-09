@@ -164,7 +164,8 @@
 ```
 * 自定义注解
 ```
-    比如在控制器上新增注解@Auth(params),则需要在application/annotation 中新增Auth类，实现run 方法，run方法接收2个参数，一个是注解中的参数，一个方法的返回值（适用后置注解）
+    比如在控制器上新增注解@Auth(params),则需要在application/annotation 中新增Auth类，实现run 方法，
+    run方法接收2个参数，一个是注解中的参数，一个方法的返回值（适用后置注解）
 
     前置注解【在方法执行前执行】
         @Auth(params) 或 @Auth(params)!before
