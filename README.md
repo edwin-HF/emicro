@@ -39,7 +39,7 @@
                 |--Cache.php
                 |--...
             |--config【配置文件目录】
-                |--system.php[返回数组格式]
+                |--system.php【返回数组格式】
                 |--...
             |--controller【控制器目录】
                 |--Index.php
@@ -172,26 +172,25 @@
     后置注解【在方法执行后执行】
         @Auth(params)!after
 
-    自己实现的类，比如自己实现的service或logic 也可使用注解，只是调用方式由
-```
-```
-    $service = new Service();
-    $returnData = $service->method($param);
-               
-                |
-                |
-               \|/
+    自己实现的类（除了控制器中的类），比如自己实现的service或logic 也可使用注解，只是调用方式由
 
-    EMicro\Factory::call()
-```
-变成
-```
+
+                 $service = new Service();                          
+                 $returnData = $service->method($param1, $param2);   
+
+                            
+                                        |
+                                        |变
+                                        |成
+                                      \ | /
+                                       \|/
+                
+
+     $returnData = EMicro\Factory::call(Service::class, "method", [$param1,$param2]) 
 
 ```
-
+* 注解解析类例子
 ```
-```
-
     <?php
 
 
@@ -210,54 +209,95 @@
     }
 ```
 
-
-* `git clone git@code.aliyun.com:minyea/egdd-admin.git && cd egdd-admin`
-* 如无特殊需求不许改动此`docker`配置文件
-* `cp laradock/docker.env laradock/.env`
-* 启动容器 `开发环境使用增加: elasticsearch 容器`
-* `docker-compose up -d nginx php-fpm workspace workspace-crontab php-worker-request-oss-compress-status`
-* 配置项目
-* `cp .env.example .env`
-* 进入`workspace`执行命令
-* `docker-compose exec workspace bash`
-* `chmod -R 777 storage bootstrap/cache`
-* `php artisan migrate`
-* `php artisan db:seed`
-
-****
-* 启动队列容器
+* 项目没有集成视图，可以自己实现，以下是个视图注解的案例，可参考
 ```
-docker-compose up -d php-worker
-```
-
-## 容器说明
-* `workspace`: 工作容器
-* `workspace-crontab` 内包含定时任务执行,
-* `php-worker`: 内包含队列任务,队列容器
-* `elasticsearch`: 本地开发使用全文索引容器
-* `php-worker-request-oss-compress-status`: 请求 oss 视频转码状态容器
-
-## 重构容器
-`docker-compose build nginx php-fpm workspace`
-
-## 构建代码提示
-```bash
-php artisan ide-helper:models "App\Models\" --write --reset
+<?php
 
 
-php artisan ide-helper:models --write --reset
+    namespace annotation;
+
+
+    use EMicro\Application;
+
+    class View
+    {
+
+        public function run($params,$data){
+            header('Content-Type:text/html');
+            extract($data);
+            die(require Application::getInstance()->getAppPath().'/view/'.$params.'.phtml');
+        }
+
+    }
 ```
 
-## 事项
-* 添加或修改superior配置文件后要重构容器再启动才能生效, 即docker-compose build php-worker && docker-compose up -d php-worker
-* 测试包含数据库条数限制
+* application/controller/Index.php
+```
+<?php
 
-## 代码修复
-```shell script
-# 代码格式检测
-phpcs --standard=PSR12
-# 代码格式修复
-phpcbf --standard=PSR12
-# 代码质量分析
-phpstan analyse
+
+namespace controller;
+
+use EMicro\Request;
+
+/**
+ * @Route(index)
+ */
+class Index
+{
+
+    /**
+     * @Route(hello)
+     * @View(index/index)!after
+     */
+    public function index(Request $request){
+
+        return  [
+            [
+                'id'   => 1,
+                'name' => 'LiSi',
+                'age'  => 12
+            ],
+            [
+                'id'   => 2,
+                'name' => 'LaoWang',
+                'age'  => 13
+            ],
+        ];
+
+    }
+
+}
+```
+
+
+* application/view/index/index.phtml
+```
+<h1>
+    <?=$title??'' ?>
+
+    <table border="1px">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>name</th>
+                <th>age</th>
+            </tr>
+        </thead>
+
+            <?php foreach ($user??[] as $value) { ?>
+                <tr>
+                    <th><?=$value['id']; ?></th>
+                    <th><?=$value['name']; ?></th>
+                    <th><?=$value['age']; ?></th>
+                </tr>
+            <?php } ?>
+
+        <tbody>
+
+        </tbody>
+    </table>
+
+</h1>
+
 ```
