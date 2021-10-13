@@ -91,6 +91,7 @@
     use EMicro\Request;
 
     /**
+    * @Controller
     * @Route(index)【路由地址，不设置默认为类名】
     */
     class Index
@@ -115,7 +116,6 @@
 
  EMicro\Application
     |-- public static function getInstance(){}
-    |-- public function dispatcherNamespace($dispatcherDir){}
     |-- public function run(){}
     |-- public function getAppPath(){}
 
@@ -173,7 +173,11 @@
         就能获取到page_size了，支持默认值，如果没有设置则返回默认值。
 
 
-    2 内置注解 @Route(value),应用与控制器类和方法，如果不设置则默认使用【控制器类名称/控制器方法名称】
+    2 内置注解
+    
+         @Route(value),应用与控制器类和方法，如果不设置则默认使用【控制器类名称/控制器方法名称】
+         @Controller 标记当前类是Controller,dispatcher 会分发到@Controller标记的类上
+         @Annotation 标记当前类是注解解析类
 
 ```
 * 自定义注解
@@ -212,6 +216,9 @@
     namespace annotation;
 
 
+    /**
+    * @Annotation
+    */
     class Auth
     {
 
@@ -234,6 +241,9 @@
 
     use EMicro\Application;
 
+    /**
+    * @Annotation
+    */
     class View
     {
 
@@ -256,6 +266,7 @@ namespace controller;
 use EMicro\Request;
 
 /**
+ * @Controller
  * @Route(index)
  */
 class Index
