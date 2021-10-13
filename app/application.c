@@ -10,6 +10,7 @@
 #include "../php_emicro.h"
 #include "helper.h"
 #include "../app/application.h"
+#include "annotation.h"
 #include "request.h"
 
 #include <regex.h>
@@ -31,21 +32,6 @@ ZEND_END_ARG_INFO()
 ZEND_BEGIN_ARG_INFO(arginfo_application_load, 0)
     ZEND_ARG_INFO(0, class)
 ZEND_END_ARG_INFO()
-
-PHP_METHOD(emicro_application, dispatcherNamespace){
-    
-    zval *obj = getThis();
-    zend_string *params;
-
-    ZEND_PARSE_PARAMETERS_START(1,1)
-        Z_PARAM_STR(params);
-    ZEND_PARSE_PARAMETERS_END();
-
-    zend_update_property_str(emicro_application_ce,obj,ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),params);
-
-    RETURN_OBJ(obj);
-
-}
 
 PHP_METHOD(emicro_application, setAppPath){
     
@@ -73,21 +59,6 @@ PHP_METHOD(emicro_application, getAppPath){
 
 
     RETURN_ZVAL(retval,0,1);
-
-}
-
-PHP_METHOD(emicro_application, annotationNamespace){
-    
-    zval *obj = getThis();
-    zend_string *params;
-
-    ZEND_PARSE_PARAMETERS_START(1,1)
-        Z_PARAM_STR(params);
-    ZEND_PARSE_PARAMETERS_END();
-
-    zend_update_property_str(emicro_application_ce,obj,ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),params);
-
-    RETURN_OBJ(obj);
 
 }
 
@@ -173,8 +144,9 @@ PHP_METHOD(emicro_application, run){
     ZVAL_STRING(&params[0], "EMicro\\Application::load");
 
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
-    
-    init_router_map();
+
+    init_annotation();
+    // init_router_map();
     dispatcher();
     
 }
@@ -260,7 +232,6 @@ void scan_cb_config(char* file){
         
         zend_hash_str_update(ht_config,config,strlen(config),zc_config);
 
-
         HashTable *ht_config_mt = EMICRO_G(file_config_mt);
 
         zval z_now;
@@ -282,13 +253,15 @@ void init_config(){
 
 }
 
+void init_annotation(){
+    scan_dir(EMICRO_G(app_path),annotation_scan_cb);
+}
+
 zend_function_entry emicro_application_methods[] = {
     PHP_ME(emicro_application, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_application, __clone, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_application, getInstance, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_application, load, arginfo_application_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-    PHP_ME(emicro_application, dispatcherNamespace, arginfo_application_dispatcherNamespace, ZEND_ACC_PUBLIC)
-    PHP_ME(emicro_application, annotationNamespace, arginfo_application_annotationNamespace, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, setAppPath, arginfo_application_setAppPath, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, getAppPath, NULL, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, run, NULL, ZEND_ACC_PUBLIC)
@@ -304,8 +277,6 @@ EMICRO_MODULE_D(application) {
 
 	//static
 	zend_declare_property_null(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
-	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_DISPATCHER_NAMESPACE),"controller", ZEND_ACC_PUBLIC TSRMLS_CC);
-	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),"annotation", ZEND_ACC_PUBLIC TSRMLS_CC);
 	zend_declare_property_string(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_APP_PATH),"", ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 
 	return SUCCESS; // @suppress("Symbol is not resolved")

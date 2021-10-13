@@ -17,8 +17,10 @@ ZEND_TSRMLS_CACHE_EXTERN()
 ZEND_BEGIN_MODULE_GLOBALS (emicro)
     HashTable *router;
     HashTable *config;
+    HashTable *annotation;
     HashTable *file_router_mt;
     HashTable *file_config_mt;
+    HashTable *file_annotation_mt;
     char *root_path;
     char *app_path;
     int i;

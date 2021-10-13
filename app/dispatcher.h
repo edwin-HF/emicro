@@ -12,11 +12,11 @@ extern zend_class_entry * emicro_dispatcher_ce;
 EMICRO_MODULE_D(dispatcher);
 
 void dispatcher();
-void init_router_map();
-void scan_cb_dispatcher(char *file);
+void init_router_map(char *file, char *class, char *doc_comment);
 void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, char *position, void *params);
 void annotation_cb_dispatcher_method(char *annotation, char *annotation_param, char *position, void *params);
-void annotation_cb_dispatcher(char *annotation, char *annotation_param, char *position, void *params);
+void ref_class_method_doc_cb(char *class, char *method, char* doc_comment, void *params);
+
 
 zval* call_dispatcher(char *class, char *method);
 void dispatcher_return(zval *retval);

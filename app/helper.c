@@ -25,6 +25,39 @@ char* replace(zval* str, char *find, char *replace){
 
 }
 
+int reg_match(const char *str, char *pattern){
+
+    char *seek_ptr = str;
+    int find = 0;
+
+    regex_t pattern_compiled;
+    
+    regcomp(&pattern_compiled,pattern,REG_EXTENDED | REG_NEWLINE);
+
+    while (1)
+    {
+
+        regmatch_t pmatch[1] = {};
+        size_t     nmatch = 1;
+
+        int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
+
+        if (reg_ret != REG_NOERROR || reg_ret == REG_NOMATCH)
+        {
+            break;
+        }else{
+            find = 1;
+        }
+        
+        seek_ptr += pmatch[0].rm_eo;
+    }
+
+    regfree(&pattern_compiled);
+
+    return find;
+
+}
+
 void reg_replace(const char *str, char *pattern, char *replace, char* str_replace){
 
     char *seek_ptr = str;

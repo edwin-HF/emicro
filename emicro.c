@@ -81,11 +81,17 @@ static void init_global(){
 	EMICRO_G(config) = (HashTable*)pemalloc(sizeof(HashTable),1);
 	zend_hash_init(EMICRO_G(config),0,NULL,NULL,1);
 
+	EMICRO_G(annotation) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(EMICRO_G(annotation),0,NULL,NULL,1);
+
 	EMICRO_G(file_router_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
 	zend_hash_init(EMICRO_G(file_router_mt),0,NULL,z_global_dtor,1);
 
 	EMICRO_G(file_config_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
 	zend_hash_init(EMICRO_G(file_config_mt),0,NULL,NULL,1);
+
+	EMICRO_G(file_annotation_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
+	zend_hash_init(EMICRO_G(file_annotation_mt),0,NULL,NULL,1);
 
 	EMICRO_G(root_path) = (char*)pemalloc(sizeof(char)*MAXPATHLEN,1);
 	EMICRO_G(app_path)  = (char*)pemalloc(sizeof(char)*MAXPATHLEN,1);
@@ -129,6 +135,11 @@ void release_global(){
 	{
 		zend_hash_clean(EMICRO_G(config));
 	}
+
+	if (EMICRO_G(annotation))
+	{
+		zend_hash_clean(EMICRO_G(annotation));
+	}
 	
 	if (EMICRO_G(file_router_mt))
 	{
@@ -138,6 +149,11 @@ void release_global(){
 	if (EMICRO_G(file_config_mt))
 	{
 		zend_hash_clean(EMICRO_G(file_config_mt));
+	}
+
+	if (EMICRO_G(file_annotation_mt))
+	{
+		zend_hash_clean(EMICRO_G(file_annotation_mt));
 	}
 
 	if (EMICRO_G(root_path))

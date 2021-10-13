@@ -5,42 +5,102 @@
 #include "main/SAPI.h"
 #include "Zend/zend_API.h"
 #include "zend_exceptions.h"
-#include "../../reflection/php_reflection.h"
 
+#include "../php_emicro.h"
 #include "application.h"
 #include "annotation.h"
+#include "dispatcher.h"
+#include "helper.h"
 
-static void call_annotation(char *annotation, char *annotation_param, zval *retval){
-    zval app_obj, *c_rv;
+void annotation_scan_cb(char *file){
 
-    emicro_call_static_method(emicro_application_ce,"getInstance",&app_obj);
-
-    zval *z_annotation = zend_read_property(emicro_application_ce,&app_obj,ZEND_STRL(EMICRO_APPLICATION_ANNOTATION_NAMESPACE),1,c_rv);
-
-    char ns_annotation[MAXNAMLEN];
-    php_sprintf(ns_annotation,"%s\\%s",ZSTR_VAL(Z_STR_P(z_annotation)), annotation);
-
-    zval annotation_obj, annotation_func, annotation_retval, annotation_params[2];
-    zend_string *a_key = zend_string_init(ns_annotation,strlen(ns_annotation), 0);
-    zend_class_entry *obj_ptr = zend_lookup_class(a_key);
-    zend_string_free(a_key);
-
-    if (obj_ptr)
+    struct stat buf;
+    if (stat(file,&buf) != 0)
     {
-        object_init_ex(&annotation_obj, obj_ptr);
-    
-        ZVAL_STRING(&annotation_func, "run");
-        ZVAL_STRING(&annotation_params[0],annotation_param);
-        if (retval != NULL)
+        zend_throw_exception(NULL,"obtain file stat err",500);
+    }
+
+    int cached = validate_annotation_cache(file,buf.st_mtim.tv_sec);
+
+    if (!cached)
+    {
+        char pattern[255];
+        php_sprintf(pattern,".*application/");
+
+        char filename[MAXPATHLEN] = {0};
+        char ns_class[MAXPATHLEN] = {0};
+
+        reg_replace(file,pattern,"",filename);
+        reg_replace(filename,"/","\\",ns_class);
+
+        char class[MAXNAMLEN] = {0};
+        strncpy(class,ns_class,strlen(filename) - 4);
+
+        char *class_document = ref_class_doc(class);
+
+        if (reg_match(class_document,"Annotation"))
         {
-            ZVAL_ZVAL(&annotation_params[1],retval,1,1);
-        }else{
-            ZVAL_NULL(&annotation_params[1]);
+            init_annotation_map(file, class, class_document);
         }
 
-        call_user_function(NULL,&annotation_obj,&annotation_func,&annotation_retval,2,annotation_params);
+        if (reg_match(class_document,"Controller"))
+        {
+            init_router_map(file, class, class_document);
+        }
+
+        zval z_now;
+        ZVAL_LONG(&z_now,time(NULL));
+
+        zend_hash_str_update(EMICRO_G(file_annotation_mt),file,strlen(file),&z_now);
 
     }
+
+}
+
+void init_annotation_map(char *file, char *class, char *class_document){
+
+    char s_annotation[MAXNAMLEN] = {0};
+
+    reg_replace(class,".*[\\]{1}","",s_annotation);
+
+    zend_string *s_class = zend_string_init(class,strlen(class),1);
+    zval *z_class = (zval*)pemalloc(sizeof(zval),1);
+    ZVAL_STR(z_class,s_class);
+
+    zend_hash_str_update(EMICRO_G(annotation),s_annotation,strlen(s_annotation),z_class);
+
+}
+
+static void call_annotation(char *annotation, char *annotation_param, zval *retval){
+
+    zval *z_class = zend_hash_str_find(EMICRO_G(annotation),annotation,strlen(annotation));
+
+    if (z_class != NULL)
+    {
+
+        zend_class_entry *obj_ptr = zend_lookup_class(Z_STR_P(z_class));
+
+        if (obj_ptr)
+        {
+
+            zval annotation_obj, annotation_func, annotation_retval, annotation_params[2];
+
+            object_init_ex(&annotation_obj, obj_ptr);
+        
+            ZVAL_STRING(&annotation_func, "run");
+            ZVAL_STRING(&annotation_params[0],annotation_param);
+            if (retval != NULL)
+            {
+                ZVAL_ZVAL(&annotation_params[1],retval,1,1);
+            }else{
+                ZVAL_NULL(&annotation_params[1]);
+            }
+
+            call_user_function(NULL,&annotation_obj,&annotation_func,&annotation_retval,2,annotation_params);
+
+        }
+    }
+
 }
 
 void annotation_run(zval *list, zval *retval){
@@ -84,57 +144,74 @@ void annotation_cb(char *annotation, char *annotation_param, char *position, voi
 
 char* ref_class_doc(char *class){
 
-    zval reflection_class;
-    zval ctor_name, reflection, ctor_params[1];
-    ZVAL_STRING(&ctor_name,"__construct");
-    ZVAL_STRING(&ctor_params[0],class);
+    zend_string *s_class = zend_string_init(class,strlen(class),0);
+    zend_class_entry *ce = zend_lookup_class(s_class);
+    zend_string_release(s_class);
 
-    object_init_ex(&reflection_class,reflection_class_ptr);
-    call_user_function(NULL,&reflection_class,&ctor_name,&reflection,1,&ctor_params);
-
-    zval func_doc_method, doc;
-    ZVAL_STRING(&func_doc_method,"getDocComment");
-    call_user_function(NULL,&reflection_class,&func_doc_method,&doc,0,NULL);
-
-    if (Z_TYPE(doc) == IS_FALSE)
+    if (ce != NULL && ce->type == ZEND_USER_CLASS && ce->info.user.doc_comment)
     {
-        return "";
-    }else{
-        return ZSTR_VAL(Z_STR(doc));
+        return ZSTR_VAL(ce->info.user.doc_comment);
     }
+
+    return "";
     
 }
 
 char* ref_method_doc(char *class, char* method){
 
-    zval ref_class;
-    zval ctor_name, reflection, ctor_params[1];
-    ZVAL_STRING(&ctor_name,"__construct");
-    ZVAL_STRING(&ctor_params[0],class);
+    zend_string *s_class = zend_string_init(class,strlen(class),0);
+    zend_class_entry *ce = zend_lookup_class(s_class);
+    zend_string_release(s_class);
 
-    object_init_ex(&ref_class,reflection_class_ptr);
-    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
+    zend_op_array *op_array = zend_hash_str_find_ptr(&ce->function_table,method,strlen(method));
 
-
-    zval func_reflection_method,doc_handler;
-    zval func_reflection_method_params[1];
-
-    ZVAL_STRING(&func_reflection_method,"getMethod");
-    ZVAL_STRING(&func_reflection_method_params[0],method);
-
-    call_user_function(NULL,&ref_class,&func_reflection_method,&doc_handler,1,&func_reflection_method_params);
-
-    zval func_doc_method, doc_method;
-    ZVAL_STRING(&func_doc_method,"getDocComment");
-    call_user_function(NULL,&doc_handler,&func_doc_method,&doc_method,0,NULL);
-
-    char *s_doc_method = "";
-
-    if (Z_TYPE(doc_method) != IS_FALSE)
+    if (op_array != NULL && op_array->type == ZEND_USER_FUNCTION && op_array->doc_comment)
     {
-        s_doc_method = ZSTR_VAL(Z_STR(doc_method));
+        return ZSTR_VAL(op_array->doc_comment);
     }
 
-    return s_doc_method;
+    return "";
+    
+}
+
+void ref_class_method_doc(char *class,ref_method_doc_cb ref_cb,void *params){
+
+    zend_string *s_class = zend_string_init(class,strlen(class),0);
+    zend_class_entry *ce = zend_lookup_class(s_class);
+    zend_string_release(s_class);
+
+    zend_op_array *op_array;
+
+    ZEND_HASH_FOREACH_PTR(&ce->function_table, op_array) {
+        if (op_array->type == ZEND_USER_FUNCTION) {
+            if (op_array->doc_comment)
+            {
+                ref_cb(class,op_array->function_name->val,op_array->doc_comment->val,params);
+            }else{
+                ref_cb(class,op_array->function_name->val,"",params);
+            }
+            
+        }
+    } ZEND_HASH_FOREACH_END();
+
+}
+
+int8_t validate_annotation_cache(char *file, int64_t mt){
+
+    HashTable *ht = EMICRO_G(file_annotation_mt);
+
+    zval *c_time = zend_hash_str_find(ht,file,strlen(file));
+
+    if (c_time == NULL)
+    {
+        return 0;
+    }
+
+    if (mt > Z_LVAL_P(c_time))
+    {
+        return 0;
+    }
+    
+    return 1;
 
 }

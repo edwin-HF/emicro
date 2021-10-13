@@ -12,6 +12,7 @@ typedef void (*parse_annotation_callback)(char *annotation, char *annotation_par
 typedef void* (*explode_callback)(char *a_str,size_t a_str_len);
 
 char* replace(zval* str, char *find, char *replace);
+int reg_match(const char *str, char *pattern);
 void reg_replace(const char *str, char *pattern, char *replace, char* retval);
 void scan_dir(char *path, scan_callback callback);
 void _parse_annotation(char* document, parse_annotation_callback callback, void *callback_params, char *filter);
