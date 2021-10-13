@@ -17,11 +17,7 @@
 
 zend_class_entry * emicro_application_ce;
 
-ZEND_BEGIN_ARG_INFO(arginfo_application_dispatcherNamespace, 0)
-    ZEND_ARG_INFO(0, path)
-ZEND_END_ARG_INFO()
-
-ZEND_BEGIN_ARG_INFO(arginfo_application_annotationNamespace, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_application_run, 0)
     ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
@@ -134,6 +130,17 @@ PHP_METHOD(emicro_application, getInstance){
 
 PHP_METHOD(emicro_application, run){
 
+    zval *path;
+
+    ZEND_PARSE_PARAMETERS_START(1,1)
+        Z_PARAM_ZVAL(path);
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (!path)
+    {
+        zend_throw_exception(NULL,"handler can not empty!",500);
+    }
+
     zval* this = getThis();
 
     zval func_name;
@@ -146,9 +153,7 @@ PHP_METHOD(emicro_application, run){
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
     init_annotation();
-    // init_router_map();
-    dispatcher();
-    
+    dispatcher(path);
 }
 
 void print_g(){

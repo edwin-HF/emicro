@@ -222,12 +222,16 @@ void init_router_map(char *file, char *class, char *doc_comment){
 }
 
 
-void dispatcher(){
+void dispatcher(zval *router){
 
-    zval* router = dispatchParams(TRACK_VARS_GET,"s");
+    // zval* router = dispatchParams(TRACK_VARS_GET,"s");
+
+    char path[MAXNAMLEN] = {0};
+    reg_replace(ZSTR_VAL(Z_STR_P(router)),"\\?.*","",path);
+
     char router_path[MAXNAMLEN];
 
-    l_trim(ZSTR_VAL(Z_STR_P(router)),router_path,1);
+    l_trim(path,router_path,1);
 
     HashTable *ht = EMICRO_G(router);
 

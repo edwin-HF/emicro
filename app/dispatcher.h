@@ -11,7 +11,7 @@ extern zend_class_entry * emicro_dispatcher_ce;
 
 EMICRO_MODULE_D(dispatcher);
 
-void dispatcher();
+void dispatcher(zval *router);
 void init_router_map(char *file, char *class, char *doc_comment);
 void annotation_cb_dispatcher_class(char *annotation, char *annotation_param, char *position, void *params);
 void annotation_cb_dispatcher_method(char *annotation, char *annotation_param, char *position, void *params);

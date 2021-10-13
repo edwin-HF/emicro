@@ -76,7 +76,7 @@
     \think\facade\Db::setConfig(config('database'));
 
     // 开始运行
-    $application->run();
+    $application->run($_SERVER['REQUEST_URI']);
 
 ```
 
