@@ -54,7 +54,7 @@ PHP_METHOD(emicro_application, getAppPath){
     retval = zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
 
 
-    RETURN_ZVAL(retval,0,1);
+    RETURN_ZVAL(retval,1,0);
 
 }
 
@@ -70,17 +70,18 @@ PHP_METHOD(emicro_application, load){
 
     zval *this = getThis();
     zval *app_path , *rv;
-    zval *class;
+    char *class;
     size_t class_len;
     ZEND_PARSE_PARAMETERS_START(1,1)
-        Z_PARAM_ZVAL(class);
+        Z_PARAM_STRING(class,class_len);
     ZEND_PARSE_PARAMETERS_END();
 
     app_path =zend_read_static_property(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),1);
 
     char *realpath  = Z_STRVAL_P(app_path);
-    char *classPath = replace(class,"\\","/");
     char className[MAXPATHLEN] = {0};
+    char classPath[MAXPATHLEN] = {0};
+    reg_replace(class,"[\\]{1}","/",classPath);
 
     php_sprintf(className,"%s/%s.php",realpath,classPath);
 
@@ -269,7 +270,7 @@ zend_function_entry emicro_application_methods[] = {
     PHP_ME(emicro_application, load, arginfo_application_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_application, setAppPath, arginfo_application_setAppPath, ZEND_ACC_PUBLIC)
     PHP_ME(emicro_application, getAppPath, NULL, ZEND_ACC_PUBLIC)
-    PHP_ME(emicro_application, run, NULL, ZEND_ACC_PUBLIC)
+    PHP_ME(emicro_application, run, arginfo_application_run, ZEND_ACC_PUBLIC)
     { NULL, NULL, NULL }
 
 };
