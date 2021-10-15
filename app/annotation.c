@@ -163,7 +163,9 @@ char* ref_method_doc(char *class, char* method){
     zend_class_entry *ce = zend_lookup_class(s_class);
     zend_string_release(s_class);
 
-    zend_op_array *op_array = zend_hash_str_find_ptr(&ce->function_table,method,strlen(method));
+    char *l_method = zend_str_tolower_dup(method,strlen(method));
+    
+    zend_op_array *op_array = zend_hash_str_find_ptr(&ce->function_table,l_method,strlen(l_method));
 
     if (op_array != NULL && op_array->type == ZEND_USER_FUNCTION && op_array->doc_comment)
     {
