@@ -58,11 +58,62 @@ int reg_match(const char *str, char *pattern){
 
 }
 
+int reg_router(const char *path, const char *uri, char router_params[10][MAXPATHLEN]){
+
+    char *seek_ptr = uri;
+    int router_param_count = 0;
+
+    char pattern[MAXPATHLEN] = {0};
+    reg_replace(path,"\:[^\/]*","([^\/]+)",pattern);
+
+    regex_t pattern_compiled;
+    
+    regcomp(&pattern_compiled,pattern,REG_EXTENDED | REG_NEWLINE);
+
+    while (1)
+    {
+
+        regmatch_t pmatch[10] = {};
+        size_t     nmatch = 10;
+
+        int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
+
+        if (reg_ret != REG_NOERROR || reg_ret == REG_NOMATCH)
+        {
+            break;
+        }else{
+
+            for (size_t i = 0; i < nmatch; i++)
+            {
+
+                char params[MAXPATHLEN] = {0};
+                char params_len = 0;
+                for (size_t j = pmatch[i+1].rm_so; j < pmatch[i+1].rm_eo; j++)
+                {
+                    params[params_len++] = seek_ptr[j];
+                }
+
+                if (params_len > 0)
+                {
+                    strcpy(router_params[router_param_count++],params);
+                }
+
+            }
+            
+        }
+        
+        seek_ptr += pmatch[0].rm_eo;
+    }
+
+    regfree(&pattern_compiled);
+
+    return router_param_count;
+
+}
+
 void reg_replace(const char *str, char *pattern, char *replace, char* str_replace){
 
     char *seek_ptr = str;
-    // char str_replace[MAXPATHLEN]={0};
-    // memset(str_replace,0,sizeof(str_replace));
 
     regex_t pattern_compiled;
     

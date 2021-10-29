@@ -154,7 +154,7 @@ PHP_METHOD(emicro_application, run){
     call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
     init_annotation();
-    dispatcher(path);
+    init_dispatcher(path);
 }
 
 void print_g(){

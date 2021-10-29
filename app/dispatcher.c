@@ -221,10 +221,7 @@ void init_router_map(char *file, char *class, char *doc_comment){
 
 }
 
-
-void dispatcher(zval *router){
-
-    // zval* router = dispatchParams(TRACK_VARS_GET,"s");
+void init_dispatcher(zval *router){
 
     char path[MAXNAMLEN] = {0};
     reg_replace(ZSTR_VAL(Z_STR_P(router)),"\\?.*","",path);
@@ -233,26 +230,12 @@ void dispatcher(zval *router){
 
     l_trim(path,router_path,1);
 
-    HashTable *ht = EMICRO_G(router);
+    parse_dispatcher(router_path);
 
-    zval* router_map = zend_hash_str_find(ht,router_path,strlen(router_path));
+}
 
-    if (router_map == NULL)
-    {
-        zend_throw_exception(NULL,"router not exist \n",0);
-        return;
-    }
-    
-    zval *item;
-    zend_string *key;
-    int8_t index = 0;
 
-    zval *z_controller = zend_hash_index_find(Z_ARRVAL_P(router_map),0);
-    zval *z_method     = zend_hash_index_find(Z_ARRVAL_P(router_map),1);
-
-    char *s_controller = ZSTR_VAL(Z_STR_P(z_controller));
-    char *s_method     = ZSTR_VAL(Z_STR_P(z_method));
-
+void dispatcher(char *s_controller, char *s_method, char router_params[10][MAXPATHLEN], int router_params_len){
 
     zval obj_dispatcher;
     emicro_call_static_method(emicro_dispatcher_ce,"getInstance",&obj_dispatcher);
@@ -279,7 +262,7 @@ void dispatcher(zval *router){
 
     annotation_run(&called_class_before, NULL);
     annotation_run(&called_method_before, NULL);
-    zval *retval = call_dispatcher(s_controller,s_method);
+    zval *retval = call_dispatcher(s_controller, s_method, router_params, router_params_len);
     annotation_run(&called_method_after,retval);
     annotation_run(&called_class_after,retval);
 
@@ -288,13 +271,12 @@ void dispatcher(zval *router){
 }
 
 
-zval* call_dispatcher(char *class, char *method){
+zval* call_dispatcher(char *class, char *method, char router_params[10][MAXPATHLEN], int router_params_len){
 
     zval ref_class;
     zval ctor_name, reflection, ctor_params[1];
     ZVAL_STRING(&ctor_name,"__construct");
     ZVAL_STRING(&ctor_params[0],class);
-
     object_init_ex(&ref_class,reflection_class_ptr);
     call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
 
@@ -307,14 +289,18 @@ zval* call_dispatcher(char *class, char *method){
     object_init_ex(&obj_request, emicro_request_ce);
 
     zval func_construct, construct_retval;
-    zval controllerMethod, *retval, params[1];
+    zval controllerMethod, *retval, params[router_params_len];
 
     retval = (zval*)pemalloc(sizeof(zval),0);
-    
-    ZVAL_STRING(&controllerMethod, method);
-    ZVAL_ZVAL(&params[0],&obj_request,1,1);
 
-    call_user_function(NULL,&obj_controller,&controllerMethod,retval,1,params);
+    ZVAL_STRING(&controllerMethod, method);
+
+    for (size_t i = 0; i < router_params_len; i++)
+    {
+        ZVAL_STRING(&params[i], router_params[i]);
+    }
+
+    call_user_function(NULL,&obj_controller,&controllerMethod,retval,router_params_len,params);
 
     return retval;
 
@@ -380,5 +366,53 @@ int8_t validate_dispatcher_cache(char *file,int64_t mt){
     }
     
     return 1;
+
+}
+
+void parse_dispatcher(char *path){
+
+    HashTable *ht = EMICRO_G(router);
+
+    zval *router_map, *z_controller, *z_method;
+
+    char router_params[10][MAXPATHLEN] = {0};
+    int router_params_len = 0;
+    
+    router_map = zend_hash_str_find(ht,path,strlen(path));
+
+    if (router_map != NULL)
+    {
+        goto exec_dispatcher;
+    }
+
+    zend_string *key;
+    ZEND_HASH_FOREACH_STR_KEY_VAL(ht, key, router_map){
+
+        if (reg_match(ZSTR_VAL(key),"\:"))
+        {
+
+            router_params_len = reg_router(key->val, path, router_params);
+
+            if (router_params_len > 0)
+            {
+                goto exec_dispatcher;
+            }
+        }
+
+    }ZEND_HASH_FOREACH_END();
+
+    zend_throw_exception(NULL,"router not exist \n",0);
+    return;
+
+
+exec_dispatcher:
+
+    z_controller = zend_hash_index_find(Z_ARRVAL_P(router_map),0);
+    z_method     = zend_hash_index_find(Z_ARRVAL_P(router_map),1);
+
+    char *s_controller = ZSTR_VAL(Z_STR_P(z_controller));
+    char *s_method     = ZSTR_VAL(Z_STR_P(z_method));
+
+    dispatcher(s_controller, s_method, router_params, router_params_len);
 
 }
