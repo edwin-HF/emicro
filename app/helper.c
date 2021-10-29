@@ -74,7 +74,7 @@ int reg_router(const char *path, const char *uri, char router_params[10][MAXPATH
     {
 
         regmatch_t pmatch[10] = {};
-        size_t     nmatch = 10;
+        size_t     nmatch = 10-1;
 
         int reg_ret = regexec(&pattern_compiled,seek_ptr,nmatch,pmatch,0);
 
