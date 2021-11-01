@@ -98,12 +98,18 @@
     {
 
         /**
-        * @Route(hello)【路由地址，不设置默认为方法名，当前访问地址为：http://domain/index/hello】
+        * @Route(emicro)【路由地址，不设置默认为方法名，当前访问地址为：http://domain/index/emicro
         */
-        public function index(Request $request){
+        public function index(){
             return 'hello EMicro!';
         }
 
+        /**
+        * @Route(emicro/:id)【支持路由参数，解析到方法的参数，当前访问地址为：http://domain/index/emicro/1
+        */
+        public function detail($id){
+            return 'hello EMicro!';
+        }
     }
 
 ```
@@ -276,7 +282,7 @@ class Index
      * @Route(hello)
      * @View(index/index)!after
      */
-    public function index(Request $request){
+    public function index(){
 
         $user = [
             [
