@@ -67,11 +67,6 @@
     // 获取引用实例
     $application = Application::getInstance();
 
-    // 设置注解解析目录，不设置默认为【application/annotation】
-    // $application->annotationNamespace('');
-    // 设置控制器目录，不设置默认为【application/controller】
-    // $application->dispatcherNamespace('');
-
     // 集成think-orm , 配置数据库
     \think\facade\Db::setConfig(config('database'));
 
