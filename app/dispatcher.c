@@ -280,15 +280,12 @@ zval* call_dispatcher(char *class, char *method, char router_params[10][MAXPATHL
     object_init_ex(&ref_class,reflection_class_ptr);
     call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
 
-    zval obj_controller, obj_request;
+    zval obj_controller;
 
-    zval ref_controller_func, controller_retval;
+    zval ref_controller_func;
     ZVAL_STRING(&ref_controller_func, "newInstance");
     call_user_function(NULL,&ref_class,&ref_controller_func,&obj_controller,0,NULL);
 
-    object_init_ex(&obj_request, emicro_request_ce);
-
-    zval func_construct, construct_retval;
     zval controllerMethod, *retval, params[router_params_len];
 
     retval = (zval*)pemalloc(sizeof(zval),0);
