@@ -4,7 +4,6 @@
 #include "main/SAPI.h"
 #include "Zend/zend_API.h"
 #include "zend_exceptions.h"
-#include "../../reflection/php_reflection.h"
 
 #include "../php_emicro.h"
 #include "dispatcher.h"
@@ -273,18 +272,16 @@ void dispatcher(char *s_controller, char *s_method, char router_params[10][MAXPA
 
 zval* call_dispatcher(char *class, char *method, char router_params[10][MAXPATHLEN], int router_params_len){
 
-    zval ref_class;
-    zval ctor_name, reflection, ctor_params[1];
-    ZVAL_STRING(&ctor_name,"__construct");
-    ZVAL_STRING(&ctor_params[0],class);
-    object_init_ex(&ref_class,reflection_class_ptr);
-    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
+    zval obj_controller, ctor_name;
+    zend_string *s_class = zend_string_init(class, strlen(class), 0);
+    zend_class_entry *ce = zend_lookup_class(s_class);
 
-    zval obj_controller;
+    object_init_ex(&obj_controller, ce);
 
-    zval ref_controller_func;
-    ZVAL_STRING(&ref_controller_func, "newInstance");
-    call_user_function(NULL,&ref_class,&ref_controller_func,&obj_controller,0,NULL);
+    if (ce->constructor) {
+        zend_function *func = ce->constructor;
+        zend_call_method(&obj_controller, ce, &func, ZSTR_VAL(func->common.function_name), ZSTR_LEN(func->common.function_name), NULL, 0, NULL, NULL);
+    }
 
     zval controllerMethod, *retval, params[router_params_len];
 

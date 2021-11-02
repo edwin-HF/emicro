@@ -5,7 +5,6 @@
 #include "main/SAPI.h"
 #include "Zend/zend_API.h"
 #include "zend_exceptions.h"
-#include "../../reflection/php_reflection.h"
 
 #include "../php_emicro.h"
 #include "factory.h"
@@ -83,22 +82,17 @@ EMICRO_MODULE_D(factory) {
 
 zval* call_method(char *class, char *method, zval *m_params){
 
-    zval ref_class;
-    zval ctor_name, reflection, ctor_params[1];
-    ZVAL_STRING(&ctor_name,"__construct");
-    ZVAL_STRING(&ctor_params[0],class);
+    zval obj_controller, ctor_name;
+    zend_string *s_class = zend_string_init(class, strlen(class), 0);
+    zend_class_entry *ce = zend_lookup_class(s_class);
 
-    object_init_ex(&ref_class,reflection_class_ptr);
-    call_user_function(NULL,&ref_class,&ctor_name,&reflection,1,&ctor_params);
+    object_init_ex(&obj_controller, ce);
 
-    zval obj_controller, obj_request;
+    if (ce->constructor) {
+        zend_function *func = ce->constructor;
+        zend_call_method(&obj_controller, ce, &func, ZSTR_VAL(func->common.function_name), ZSTR_LEN(func->common.function_name), NULL, 0, NULL, NULL);
+    }
 
-    zval ref_controller_func, controller_retval;
-    ZVAL_STRING(&ref_controller_func, "newInstance");
-    call_user_function(NULL,&ref_class,&ref_controller_func,&obj_controller,0,NULL);
-
-
-    zval func_construct, construct_retval;
     zval controllerMethod, *retval, params[50];
 
     retval = (zval*)pemalloc(sizeof(zval),0);

@@ -5,7 +5,6 @@
 #include "php_main.h"
 #include "Zend/zend_API.h"
 #include "zend_exceptions.h"
-#include "../../reflection/php_reflection.h"
 
 #include "../php_emicro.h"
 #include "helper.h"
@@ -122,6 +121,7 @@ PHP_METHOD(emicro_application, getInstance){
 
     zend_update_static_property_string(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH),EMICRO_G(app_path));
 
+    init_autoload();
     init_config();
 
 	zend_update_static_property(emicro_application_ce, ZEND_STRL(EMICRO_APPLICATION_INSTANCE), instance);
@@ -141,17 +141,6 @@ PHP_METHOD(emicro_application, run){
     {
         zend_throw_exception(NULL,"handler can not empty!",500);
     }
-
-    zval* this = getThis();
-
-    zval func_name;
-    zval func_autoload;
-    zval params[1],ret;
-
-    ZVAL_STRING(&func_name, "spl_autoload_register");
-    ZVAL_STRING(&params[0], "EMicro\\Application::load");
-
-    call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
     init_annotation();
     init_dispatcher(path);
@@ -256,6 +245,19 @@ void init_config(){
     char config_path[MAXPATHLEN];
     php_sprintf(config_path,"%s/config",EMICRO_G(app_path));
     scan_dir(config_path,scan_cb_config);
+
+}
+
+void init_autoload(){
+
+    zval func_name;
+    zval func_autoload;
+    zval params[1],ret;
+
+    ZVAL_STRING(&func_name, "spl_autoload_register");
+    ZVAL_STRING(&params[0], "EMicro\\Application::load");
+
+    call_user_function(NULL,NULL,&func_name,&ret,1,params);
 
 }
 
