@@ -8,7 +8,7 @@
 
 #include "../php_emicro.h"
 #include "helper.h"
-#include "../app/application.h"
+#include "application.h"
 #include "annotation.h"
 #include "request.h"
 
