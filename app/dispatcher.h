@@ -8,6 +8,8 @@ extern zend_class_entry * emicro_dispatcher_ce;
 #define EMICRO_DISPATCHER_CONTROLLER "emicro_dispatcher_controller"
 #define EMICRO_DISPATCHER_METHOD "emicro_dispatcher_method"
 #define EMICRO_DISPATCHER_MULTI_MOUDLE "emicro_dispatcher_multi_moudle"
+#define EMICRO_DISPATCHER_ROUTE "emicro_dispatcher_route"
+#define EMICRO_DISPATCHER_URI "emicro_dispatcher_uri"
 
 EMICRO_MODULE_D(dispatcher);
 

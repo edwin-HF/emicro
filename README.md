@@ -128,6 +128,8 @@
     |-- public static function getInstance(){}
     |-- public function controller(){}
     |-- public function method(){}
+    |-- public function route(){}
+    |-- public function uri(){}
 
 ```
 
