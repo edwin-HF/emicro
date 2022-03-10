@@ -228,7 +228,7 @@ end:
  */
 PHP_FUNCTION(config)
 {
-	char *key;
+	char* key;
 	size_t key_len;
 	zval *retval;
 	zval *z_default = NULL;
@@ -238,8 +238,11 @@ PHP_FUNCTION(config)
 		Z_PARAM_OPTIONAL
 		Z_PARAM_ZVAL(z_default)
 	ZEND_PARSE_PARAMETERS_END();
+
+	char s_key[key_len];
+	strcpy(s_key,key);
 	
-	retval = (zval*)explode_single(key,".",config_callback);
+	retval = (zval*)explode_single(s_key,".",config_callback);
 
 	if (retval == NULL)
 	{

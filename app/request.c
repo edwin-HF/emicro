@@ -89,7 +89,6 @@ zval* parseParams(size_t type, char* key, bool_int disableDispatch){
 
 PHP_METHOD(emicro_request, __construct){
     // ZEND_PARSE_PARAMETERS_NONE();
-    php_printf("asdfasdf");
     // RETURN_NULL();
 }
 
