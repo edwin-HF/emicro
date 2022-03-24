@@ -372,19 +372,18 @@ PHP_METHOD(emicro_request, header){
         retval = zend_hash_str_find(array,key2lower->val,key_len);
         
         zend_string_release(key2lower);
-        zend_array_destroy(array);
 
         if (retval)
         {
-            RETURN_ZVAL(retval,0,1);
+            RETURN_ZVAL(retval,1,0);
         }else if(_default){
-            RETURN_ZVAL(_default,0,1);
+            RETURN_ZVAL(_default,1,0);
         }else{
             RETURN_FALSE;
         }
 
     }else{
-        RETURN_ZVAL(&headers,0,1);
+        RETURN_ZVAL(&headers,1,0);
     }
 
 }
