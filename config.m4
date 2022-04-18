@@ -59,7 +59,7 @@ if test "$PHP_EMICRO" != "no"; then
   dnl
   dnl PHP_SUBST(EMICRO_SHARED_LIBADD)
 
-  PHP_NEW_EXTENSION(emicro, emicro.c app/helper.c app/application.c app/request.c app/dispatcher.c app/factory.c app/annotation.c, $ext_shared)
+  PHP_NEW_EXTENSION(emicro, emicro.c app/helper.c app/application.c app/request.c app/dispatcher.c app/factory.c app/annotation.c app/command.c, $ext_shared)
 
   PHP_ADD_BUILD_DIR($ext_builddir/app)
 

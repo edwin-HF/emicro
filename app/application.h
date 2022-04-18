@@ -13,6 +13,7 @@ void init_config();
 void init_annotation();
 void init_autoload();
 int8_t validate_config_cache(char *file,int64_t mt);
+void scan_cb_config(char* file);
 
 EMICRO_MODULE_D(application);
 
