@@ -234,9 +234,9 @@ PHP_METHOD(emicro_command, getInstance){
 
     init_command_autoload();
 
-    // char config_path[MAXPATHLEN];
-    // php_sprintf(config_path, "%s/config", appPath);
-    // scan_dir(config_path,scan_cb_config);
+    char config_path[MAXPATHLEN];
+    php_sprintf(config_path, "%s/config", basePath);
+    scan_dir(config_path,scan_cb_config);
 
 	zend_update_static_property(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_INSTANCE), instance);
 
