@@ -100,29 +100,6 @@ static void init_global(){
 	EMICRO_G(i) = 0;
 }
 
-void* config_callback(char **a_str, size_t len){
-
-	HashTable *ht_config = EMICRO_G(config);
-	char *ht_config_key = a_str[0];
-
-	zval *ret = zend_hash_str_find(ht_config,ht_config_key,strlen(ht_config_key));
-
-	if (ret != NULL)
-	{
-		for (size_t i = 1; i < len; i++)
-		{
-			if (Z_TYPE_P(ret) == IS_ARRAY)
-			{
-				
-				ret = zend_hash_str_find(Z_ARRVAL_P(ret),a_str[i],strlen(a_str[i]));
-			}
-		}
-	}
-
-	return ret;
-	
-}
-
 void release_global(){
 
 	if (EMICRO_G(router))
@@ -219,7 +196,6 @@ PHP_FUNCTION(config)
 {
 	char* key;
 	size_t key_len;
-	zval *retval;
 	zval *z_default = NULL;
 
 	ZEND_PARSE_PARAMETERS_START(1, 2)
@@ -230,8 +206,8 @@ PHP_FUNCTION(config)
 
 	char s_key[key_len];
 	strcpy(s_key,key);
-	
-	retval = (zval*)explode_single(s_key,".",config_callback);
+
+	zval* retval = config_find(s_key);
 
 	if (retval == NULL)
 	{
