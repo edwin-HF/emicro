@@ -220,3 +220,28 @@ EMICRO_MODULE_D(config) {
 
 	return SUCCESS; // @suppress("Symbol is not resolved")
 }
+
+int8_t validate_config_cache(char *file,int64_t mt){
+
+    HashTable *ht = EMICRO_G(file_config_mt);
+
+    zval *c_time = zend_hash_str_find(ht,file,strlen(file));
+
+    if (c_time == NULL)
+    {
+        return 0;
+    }
+
+    if (mt > Z_LVAL_P(c_time))
+    {
+
+        HashTable *ht_config = EMICRO_G(config);
+
+        zend_hash_str_del(ht_config,file,strlen(file));
+
+        return 0;
+    }
+    
+    return 1;
+
+}

@@ -96,10 +96,6 @@ static void init_global(){
 	EMICRO_G(file_annotation_mt) = (HashTable*)pemalloc(sizeof(HashTable),1);
 	zend_hash_init(EMICRO_G(file_annotation_mt),0,NULL,NULL,1);
 
-	EMICRO_G(root_path) = (char*)pemalloc(sizeof(char)*MAXPATHLEN,1);
-	EMICRO_G(app_path)  = (char*)pemalloc(sizeof(char)*MAXPATHLEN,1);
-	memset(EMICRO_G(root_path),0,sizeof(EMICRO_G(root_path)));
-	memset(EMICRO_G(app_path),0,sizeof(EMICRO_G(app_path)));
 
 	EMICRO_G(i) = 0;
 }
@@ -159,16 +155,6 @@ void release_global(){
 		zend_hash_clean(EMICRO_G(file_annotation_mt));
 	}
 
-	if (EMICRO_G(root_path))
-	{
-		pefree(EMICRO_G(root_path),1);
-	}
-
-	if (EMICRO_G(app_path))
-	{
-		pefree(EMICRO_G(app_path),1);
-	}
-	
 }
 
 zval* emicro_arr_deep_dup(zval *source){
