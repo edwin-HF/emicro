@@ -123,7 +123,10 @@ PHP_METHOD(emicro_config, get){
         zend_throw_exception(NULL,"key can not empty!",500);
     }
 
-    zval* retval = config_find(key);
+    char s_key[key_len];
+	strcpy(s_key,key);
+
+    zval* retval = config_find(s_key);
 
     if (retval == NULL)
 	{
