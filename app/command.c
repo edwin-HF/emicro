@@ -118,7 +118,7 @@ void init_command_annotation(){
 
 }
 
-void run_command(char *command, zval* params, zval* retval){
+void run_command(char *command, zval* params){
 
     zval *z_command_map = zend_read_static_property(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_COLLECTION_INSTANCE), 1);
 
@@ -130,6 +130,11 @@ void run_command(char *command, zval* params, zval* retval){
 
     zval *z_cm = zend_hash_str_find(Z_ARR_P(z_command_map), command, strlen(command));
 
+    if (z_cm == NULL)
+    {
+        zend_throw_exception(NULL,"command not found!",500);
+        return;
+    }
 
     if (Z_TYPE_P(z_cm) != NULL)
     {
@@ -141,22 +146,17 @@ void run_command(char *command, zval* params, zval* retval){
         if (obj_ptr)
         {
 
-            zval command_obj, command_func, command_params[1];
+            zval command_obj, command_func, command_params[1], retval;
 
             object_init_ex(&command_obj, obj_ptr);
         
             ZVAL_ZVAL(&command_func,z_method,1,1);
             ZVAL_ZVAL(&command_params[0],params,1,1);
 
-            call_user_function(NULL,&command_obj,&command_func,retval,1,command_params);
+            call_user_function(NULL,&command_obj,&command_func,&retval,1,command_params);
 
-
-        }else{
-            retval = NULL;
         }
 
-    }else{
-        retval = NULL;
     }
     
 }
@@ -197,24 +197,10 @@ PHP_METHOD(emicro_command, run){
         zend_throw_exception(NULL,"handler can not empty!",500);
     }
 
-    zval retval;
-
     init_command_annotation();
- 
-    run_command(ZSTR_VAL(Z_STR_P(path)), params, &retval);
-
-    if (&retval != NULL)
-    {
-        RETURN_ZVAL(&retval,1,1);
-    }else{
-        RETURN_NULL();
-    }
-    
+    run_command(ZSTR_VAL(Z_STR_P(path)), params);
 
 }
-
-
-
 
 
 zend_function_entry emicro_command_methods[] = {
