@@ -22,12 +22,14 @@ ZEND_BEGIN_ARG_INFO(arginfo_command_run, 0)
     ZEND_ARG_INFO(0, params)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_command_load, 0)
-    ZEND_ARG_INFO(0, class)
+ZEND_BEGIN_ARG_INFO(arginfo_command_scan, 0)
+    ZEND_ARG_INFO(0, path)
 ZEND_END_ARG_INFO()
 
 
 void annotation_cb_command_method(char *annotation, char *annotation_param, char *position, void *params){
+
+
 
 
     void** cm_params = (void**)params;
@@ -64,6 +66,7 @@ void annotation_cb_command_method(char *annotation, char *annotation_param, char
 void ref_command_class_method_doc_cb(char *class, char *method, char* doc_comment, void *params){
 
 
+
     char *m_params[2];
 
     m_params[0] = class;
@@ -74,7 +77,7 @@ void ref_command_class_method_doc_cb(char *class, char *method, char* doc_commen
 }
 
 void command_annotation_scan_cb(char *file){
-
+        
     struct stat buf;
     if (stat(file,&buf) != 0)
     {
@@ -96,19 +99,21 @@ void command_annotation_scan_cb(char *file){
 
     char *class_document = ref_class_doc(class);
 
-
-    if (reg_match(class_document,"Command"))
+    if (strlen(class_document) > 0)
     {
-        ref_class_method_doc(class,ref_command_class_method_doc_cb, NULL);
+        if (reg_match(class_document,"Command"))
+        {
+            ref_class_method_doc(class,ref_command_class_method_doc_cb, NULL);
+        }
     }
-
 
 }
 
 
 void init_command_annotation(){
 
-    zval* app_path =zend_read_static_property(emicro_command_ce,ZEND_STRL(EMICRO_COMMAND_BASE_PATH),1);
+    zval* app_path =zend_read_static_property(emicro_command_ce,ZEND_STRL(EMICRO_COMMAND_APP_PATH),1);
+
     scan_dir(ZSTR_VAL(Z_STR_P(app_path)), command_annotation_scan_cb);
 
 }
@@ -116,6 +121,12 @@ void init_command_annotation(){
 void run_command(char *command, zval* params, zval* retval){
 
     zval *z_command_map = zend_read_static_property(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_COLLECTION_INSTANCE), 1);
+
+    if (Z_TYPE_P(z_command_map) == IS_NULL)
+    {
+        zend_throw_exception(NULL,"command not found!",500);
+        return;
+    }
 
     zval *z_cm = zend_hash_str_find(Z_ARR_P(z_command_map), command, strlen(command));
 
@@ -150,49 +161,18 @@ void run_command(char *command, zval* params, zval* retval){
     
 }
 
-void init_command_autoload(){
+PHP_METHOD(emicro_command, scan){
+    
+    zend_string *params;
 
-    zval func_name;
-    zval func_autoload;
-    zval params[1],ret;
-
-    ZVAL_STRING(&func_name, "spl_autoload_register");
-    ZVAL_STRING(&params[0], "EMicro\\Command::load");
-
-    call_user_function(NULL,NULL,&func_name,&ret,1,params);
-
-}
-
-
-PHP_METHOD(emicro_command, load){
-
-    zval *this = getThis();
-    zval *app_path , *rv;
-    char *class;
-    size_t class_len;
     ZEND_PARSE_PARAMETERS_START(1,1)
-        Z_PARAM_STRING(class,class_len);
+        Z_PARAM_STR(params);
     ZEND_PARSE_PARAMETERS_END();
 
-    app_path =zend_read_static_property(emicro_command_ce,ZEND_STRL(EMICRO_COMMAND_BASE_PATH),1);
-
-
-    char *realpath  = Z_STRVAL_P(app_path);
-    char className[MAXPATHLEN] = {0};
-    char classPath[MAXPATHLEN] = {0};
-    reg_replace(class,"[\\]{1}","/",classPath);
-
-    php_sprintf(className,"%s/%s.php",realpath,classPath);
-
-    zval *retval = load(className);
-
-    if (retval != NULL)
-    {
-        pefree(retval,0);
-    }
-    
+    zend_update_static_property_string(emicro_command_ce,ZEND_STRL(EMICRO_COMMAND_APP_PATH),params->val);
 
 }
+
 
 PHP_METHOD(emicro_command, __construct){
     ZEND_PARSE_PARAMETERS_NONE();
@@ -200,47 +180,6 @@ PHP_METHOD(emicro_command, __construct){
 
 PHP_METHOD(emicro_command, __clone){
     ZEND_PARSE_PARAMETERS_NONE();
-}
-
-
-PHP_METHOD(emicro_command, getInstance){
-    ZEND_PARSE_PARAMETERS_NONE();
-
-    zval *instance = zend_read_static_property(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_INSTANCE), 1);
-
-    if (Z_TYPE_P(instance) == IS_OBJECT)
-    {
-        RETURN_ZVAL(instance,0,1);
-    }
-
-    if (object_init_ex(instance,emicro_command_ce) == FAILURE)
-    {
-	    php_printf("err obtain command instance\n");
-        return;
-    }
-
-    char *appPath;
-    char basePath[MAXPATHLEN] = {0};
-
-    if (strlen(EMICRO_G(root_path)) == 0)
-    {
-        appPath = VCWD_GETCWD(appPath,MAXPATHLEN);
-        reg_replace(appPath,"public","application",basePath);
-    }
-
-    zend_update_static_property_string(emicro_command_ce,ZEND_STRL(EMICRO_COMMAND_BASE_PATH),basePath);
-    zend_update_static_property_string(emicro_command_ce,ZEND_STRL(EMICRO_COMMAND_APP_PATH),appPath);
-
-
-    init_command_autoload();
-
-    char config_path[MAXPATHLEN];
-    php_sprintf(config_path, "%s/config", basePath);
-    scan_dir(config_path,scan_cb_config);
-
-	zend_update_static_property(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_INSTANCE), instance);
-
-    RETURN_ZVAL(instance,0,1);
 }
 
 PHP_METHOD(emicro_command, run){
@@ -261,6 +200,7 @@ PHP_METHOD(emicro_command, run){
     zval retval;
 
     init_command_annotation();
+ 
     run_command(ZSTR_VAL(Z_STR_P(path)), params, &retval);
 
     if (&retval != NULL)
@@ -280,9 +220,8 @@ PHP_METHOD(emicro_command, run){
 zend_function_entry emicro_command_methods[] = {
     PHP_ME(emicro_command, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_command, __clone, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
-    PHP_ME(emicro_command, getInstance, NULL, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-    PHP_ME(emicro_command, load, arginfo_command_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-    PHP_ME(emicro_command, run, arginfo_command_run, ZEND_ACC_PUBLIC)
+    PHP_ME(emicro_command, run, arginfo_command_run, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    PHP_ME(emicro_command, scan, arginfo_command_scan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     { NULL, NULL, NULL }
 
 };
@@ -294,9 +233,7 @@ EMICRO_MODULE_D(command) {
 	emicro_command_ce->ce_flags |= ZEND_ACC_FINAL;
 
 	//static
-	zend_declare_property_null(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_INSTANCE), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
 	zend_declare_property_null(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_COLLECTION_INSTANCE), ZEND_ACC_PRIVATE | ZEND_ACC_STATIC TSRMLS_CC);
-	zend_declare_property_string(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_BASE_PATH),"", ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 	zend_declare_property_string(emicro_command_ce, ZEND_STRL(EMICRO_COMMAND_APP_PATH),"", ZEND_ACC_PUBLIC | ZEND_ACC_STATIC TSRMLS_CC);
 
 
