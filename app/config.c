@@ -24,11 +24,6 @@ ZEND_BEGIN_ARG_INFO(arginfo_config_get, 0)
     ZEND_ARG_INFO(0, default)
 ZEND_END_ARG_INFO()
 
-ZEND_BEGIN_ARG_INFO(arginfo_config_set, 0)
-    ZEND_ARG_INFO(0, key)
-    ZEND_ARG_INFO(0, value)
-ZEND_END_ARG_INFO()
-
 
 PHP_METHOD(emicro_config, __construct){
     ZEND_PARSE_PARAMETERS_NONE();
@@ -111,36 +106,15 @@ void scan_config(char* path){
     scan_dir(path,scan_config_cb);
 }
 
-PHP_METHOD(emicro_config, set){
-
-    char *key;
-    size_t key_len;
-    zval *value;
-
-    ZEND_PARSE_PARAMETERS_START(2,2)
-        Z_PARAM_STRING(key, key_len);
-        Z_PARAM_ZVAL(value);
-    ZEND_PARSE_PARAMETERS_END();
-
-    if (key_len == 0)
-    {
-        zend_throw_exception(NULL,"key can not empty!",500);
-    }
-
-
-    // todo
-
-}
-
-
 PHP_METHOD(emicro_config, get){
 
     char *key;
     size_t key_len;
     zval *default_val = NULL;
 
-    ZEND_PARSE_PARAMETERS_START(2,2)
+    ZEND_PARSE_PARAMETERS_START(1,2)
         Z_PARAM_STRING(key, key_len);
+        Z_PARAM_OPTIONAL;
         Z_PARAM_ZVAL(default_val);
     ZEND_PARSE_PARAMETERS_END();
 
@@ -202,7 +176,6 @@ zend_function_entry emicro_config_methods[] = {
     PHP_ME(emicro_config, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_config, __clone, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_config, scan, arginfo_config_scan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-    PHP_ME(emicro_config, set, arginfo_config_set, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_config, get, arginfo_config_get, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     { NULL, NULL, NULL }
 
