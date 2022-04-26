@@ -35,6 +35,7 @@
 ```
     project
         |--application
+            |--command【命令行】
             |--annotation【注解解析目录】
                 |--Cache.php
                 |--...
@@ -46,6 +47,7 @@
                 |--...
         |--public
             |--index.php
+        |--command
         |--vendor【composer 安装的扩展，自动生成】
         |--composer.json【composer 扩展配置文件，自动生成】
 ```
@@ -57,21 +59,71 @@
 * public/index.php
 
 ```
+
 <?php
 
+
     use EMicro\Application;
+    use EMicro\Config;
+    use EMicro\Loader;
+    use EMicro\Command;
 
     // composer 扩展自动加载
     require_once "../vendor/autoload.php";
 
-    // 获取引用实例
-    $application = Application::getInstance();
+    // application 目录
+    define("APP_PATH", dirname(__DIR__).'/application');
+    // 配置文件目录
+    define("CONFIG_PATH", APP_PATH.'/config');
+    // 命令行执行命令目录
+    define("COMMAND_PATH", APP_PATH.'/command');
 
-    // 集成think-orm , 配置数据库
-    \think\facade\Db::setConfig(config('database'));
 
-    // 开始运行
-    $application->run($_SERVER['REQUEST_URI']);
+    // 注册类的自动加载
+    Loader::scan(APP_PATH);
+    // 配置文件加载目录
+    Config::scan(CONFIG_PATH);
+    // 命令行加载目录
+    Command::scan(COMMAND_PATH);
+    // 程序执行目录
+    Application::scan(APP_PATH);
+
+    $handle = ($_SERVER['REQUEST_URI'] == '/' ? '/index' : $_SERVER['REQUEST_URI']);
+
+    Application::run($handle);
+
+```
+
+* application/command
+
+```
+
+#!/usr/bin/env php
+<?php
+
+
+    use EMicro\Command;
+    use EMicro\Loader;
+    use EMicro\Config;
+
+    require_once "vendor/autoload.php";
+
+    define("APP_PATH", __DIR__ . '/application');
+    define("CONFIG_PATH", APP_PATH . '/config');
+    define("COMMAND_PATH", APP_PATH . '/command');
+
+    Loader::scan(APP_PATH);
+    Config::scan(CONFIG_PATH);
+    Command::scan(COMMAND_PATH);
+
+    $params = array_slice($_SERVER['argv'],2,$_SERVER['argc'] - 2);
+
+    try {
+        Command::run($_SERVER['argv'][1], $params);
+    }catch (Exception $exception){
+        die($exception->getMessage()."\n");
+    }
+
 
 ```
 
@@ -109,6 +161,43 @@
 
 ```
 
+
+* 命令行示例 command/Test.php
+
+```
+<?php
+
+namespace command;
+
+    /**
+    * @Command
+    */
+    class Test
+    {
+        /**
+        * @exec(test)
+        */
+        public function test($params){
+            var_dump($params);
+        }
+    }
+
+```
+* application 目录下执行
+```
+    php command test params1 params2
+```
+
+```
+    array(2) {
+    [0]=>
+    string(7) "params1"
+    [1]=>
+    string(7) "params2"
+    }
+
+```
+
     接下来就可以愉快的玩耍了...
 
 ### 文档
@@ -116,9 +205,8 @@
 ```
 
  EMicro\Application
-    |-- public static function getInstance(){}
-    |-- public function run(){}
-    |-- public function getAppPath(){}
+    |-- public static function scan($path){}
+    |-- public static function run($handler){}
 
 ```
 
@@ -137,6 +225,29 @@
 
  EMicro\Factory
     |-- public static function call($class,$method,$params){}
+
+```
+
+```
+
+ EMicro\Command
+    |-- public static function scan($path){}
+    |-- public static function run($handler, $params){}
+
+```
+
+```
+
+ EMicro\Config
+    |-- public static function scan($path){}
+    |-- public static function get($key,$default = null){}
+
+```
+
+```
+
+ EMicro\Loader
+    |-- public static function scan($path){}
 
 ```
 
@@ -180,7 +291,9 @@
     
          @Route(value),应用与控制器类和方法，如果不设置则默认使用【控制器类名称/控制器方法名称】
          @Controller 标记当前类是Controller,dispatcher 会分发到@Controller标记的类上
-         @Annotation 标记当前类是注解解析类
+         @Annotation 标记当前类是注解解析类\
+         @Command 命令行类注解，类使用该注解才会在命令行执行时扫描
+            |--@exec 命令行类方法注解，参数为具体执行路径
 
 ```
 * 自定义注解
