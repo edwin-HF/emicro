@@ -78,9 +78,6 @@
     // 命令行执行命令目录
     define("COMMAND_PATH", APP_PATH.'/command');
 
-
-    // 注册类的自动加载
-    Loader::scan(APP_PATH);
     // 配置文件加载目录
     Config::scan(CONFIG_PATH);
     // 命令行加载目录
@@ -112,6 +109,8 @@
     define("CONFIG_PATH", APP_PATH . '/config');
     define("COMMAND_PATH", APP_PATH . '/command');
 
+    // 注册类的自动加载
+    Loader::scan(APP_PATH);
     Config::scan(CONFIG_PATH);
     Command::scan(COMMAND_PATH);
 
