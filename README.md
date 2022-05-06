@@ -65,8 +65,6 @@
 
     use EMicro\Application;
     use EMicro\Config;
-    use EMicro\Loader;
-    use EMicro\Command;
 
     // composer 扩展自动加载
     require_once "../vendor/autoload.php";
@@ -75,13 +73,10 @@
     define("APP_PATH", dirname(__DIR__).'/application');
     // 配置文件目录
     define("CONFIG_PATH", APP_PATH.'/config');
-    // 命令行执行命令目录
-    define("COMMAND_PATH", APP_PATH.'/command');
+
 
     // 配置文件加载目录
     Config::scan(CONFIG_PATH);
-    // 命令行加载目录
-    Command::scan(COMMAND_PATH);
     // 程序执行目录
     Application::scan(APP_PATH);
 
@@ -107,7 +102,8 @@
 
     define("APP_PATH", __DIR__ . '/application');
     define("CONFIG_PATH", APP_PATH . '/config');
-    define("COMMAND_PATH", APP_PATH . '/command');
+    // 命令行执行命令目录
+    define("COMMAND_PATH", APP_PATH.'/command');
 
     // 注册类的自动加载
     Loader::scan(APP_PATH);
