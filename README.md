@@ -112,7 +112,6 @@
     define("CONFIG_PATH", APP_PATH . '/config');
     define("COMMAND_PATH", APP_PATH . '/command');
 
-    Loader::scan(APP_PATH);
     Config::scan(CONFIG_PATH);
     Command::scan(COMMAND_PATH);
 
