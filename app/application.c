@@ -11,6 +11,7 @@
 #include "application.h"
 #include "annotation.h"
 #include "request.h"
+#include "loader.h"
 
 #include <regex.h>
 
@@ -37,6 +38,10 @@ PHP_METHOD(emicro_application, scan){
     ZEND_PARSE_PARAMETERS_END();
 
     zend_update_static_property_string(emicro_application_ce,ZEND_STRL(EMICRO_APPLICATION_APP_PATH), ZSTR_VAL(path));
+
+    // 注册自动加载
+    zend_update_static_property_string(emicro_loader_ce, ZEND_STRL(EMICRO_LOADER_PATH), ZSTR_VAL(path));
+    register_autoload();
 
 }
 

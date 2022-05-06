@@ -8,6 +8,7 @@
 extern zend_class_entry * emicro_loader_ce;
 
 zval* load_file(char *path);
+void register_autoload();
 
 
 EMICRO_MODULE_D(loader);

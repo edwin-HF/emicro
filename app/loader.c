@@ -138,7 +138,7 @@ zend_function_entry emicro_loader_methods[] = {
     PHP_ME(emicro_loader, __construct, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_loader, __clone, NULL, ZEND_ACC_PRIVATE|ZEND_ACC_CTOR)
     PHP_ME(emicro_loader, autoload, arginfo_loader_autoload, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
-    PHP_ME(emicro_loader, scan, arginfo_loader_scan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
+    // PHP_ME(emicro_loader, scan, arginfo_loader_scan, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     PHP_ME(emicro_loader, load, arginfo_loader_load, ZEND_ACC_PUBLIC|ZEND_ACC_STATIC)
     { NULL, NULL, NULL }
 
