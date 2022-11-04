@@ -196,9 +196,9 @@ PHP_METHOD(emicro_request, get){
 
     if (retval)
     {
-        RETURN_ZVAL(retval,0,1);
+        RETURN_ZVAL(retval,1,0);
     }else if(_default){
-        RETURN_ZVAL(_default,0,1);
+        RETURN_ZVAL(_default,1,0);
     }else{
         RETURN_FALSE;
     }
@@ -221,9 +221,9 @@ PHP_METHOD(emicro_request, post){
     
     if (retval)
     {
-        RETURN_ZVAL(retval,0,1);
+        RETURN_ZVAL(retval,1,0);
     }else if(_default){
-        RETURN_ZVAL(_default,0,1);
+        RETURN_ZVAL(_default,1,0);
     }else{
         RETURN_FALSE;
     }
@@ -247,9 +247,9 @@ PHP_METHOD(emicro_request, input){
     
     if (retval)
     {
-        RETURN_ZVAL(retval,0,1);
+        RETURN_ZVAL(retval,1,0);
     }else if(_default){
-        RETURN_ZVAL(_default,0,1);
+        RETURN_ZVAL(_default,1,0);
     }else{
         RETURN_FALSE;
     }
@@ -272,9 +272,9 @@ PHP_METHOD(emicro_request, server){
     
     if (retval)
     {
-        RETURN_ZVAL(retval,0,1);
+        RETURN_ZVAL(retval,1,0);
     }else if(_default){
-        RETURN_ZVAL(_default,0,1);
+        RETURN_ZVAL(_default,1,0);
     }else{
         RETURN_FALSE;
     }
@@ -297,9 +297,9 @@ PHP_METHOD(emicro_request, cookie){
     
     if (retval)
     {
-        RETURN_ZVAL(retval,0,1);
+        RETURN_ZVAL(retval,1,0);
     }else if(_default){
-        RETURN_ZVAL(_default,0,1);
+        RETURN_ZVAL(_default,1,0);
     }else{
         RETURN_FALSE;
     }
@@ -322,9 +322,9 @@ PHP_METHOD(emicro_request, files){
     
     if (retval)
     {
-        RETURN_ZVAL(retval,0,1);
+        RETURN_ZVAL(retval,1,0);
     }else if(_default){
-        RETURN_ZVAL(_default,0,1);
+        RETURN_ZVAL(_default,1,0);
     }else{
         RETURN_FALSE;
     }
